@@ -49,7 +49,14 @@ def _validate_vin(vin: Any) -> str | None:
     return vin if VIN_PATTERN.match(vin) else None
 
 
-async def ingest_payload(payload: dict[str, Any]) -> IngestStats:
+async def ingest_payload(payload: dict[str, Any], *, decode_inline: bool = False) -> IngestStats:
+    """Ingest scraped listings into Postgres.
+
+    By default vPIC decoding is *deferred* — scraping is fast and frequent;
+    vPIC has aggressive per-IP rate limits. Set decode_inline=True only for
+    small batches (sample VINs, ad-hoc tests). Otherwise run
+    `tundra decode-vins` separately to backfill VIN-decoded fields.
+    """
     stats = IngestStats()
     rows = _payload_listings(payload)
     stats.listings_seen = len(rows)
@@ -68,7 +75,6 @@ async def ingest_payload(payload: dict[str, Any]) -> IngestStats:
 
     now = datetime.now(UTC)
 
-    # Find which VINs need a vPIC decode (no row yet, or no engine_code)
     with session_scope() as session:
         existing = {
             v.vin: v
@@ -77,15 +83,16 @@ async def ingest_payload(payload: dict[str, Any]) -> IngestStats:
             ).scalars()
         }
 
-    vins_to_decode = [
-        r["vin"] for r in cleaned
-        if r["vin"] not in existing or existing[r["vin"]].engine_code is None
-    ]
-    decodes = {}
-    if vins_to_decode:
-        for d in await decode_many(vins_to_decode):
-            decodes[d.vin] = d
-            stats.vins_decoded += 1
+    decodes: dict[str, Any] = {}
+    if decode_inline:
+        vins_to_decode = [
+            r["vin"] for r in cleaned
+            if r["vin"] not in existing or existing[r["vin"]].engine_code is None
+        ]
+        if vins_to_decode:
+            for d in await decode_many(vins_to_decode):
+                decodes[d.vin] = d
+                stats.vins_decoded += 1
 
     # Upsert vehicles + insert listing observations in one session
     with session_scope() as session:

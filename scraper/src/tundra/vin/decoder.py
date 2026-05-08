@@ -87,7 +87,7 @@ def _parse_payload(vin: str, payload: dict[str, Any]) -> VinDecode:
     )
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=8), reraise=True)
+@retry(stop=stop_after_attempt(4), wait=wait_exponential(min=2, max=20), reraise=True)
 async def _fetch(client: httpx.AsyncClient, vin: str) -> dict[str, Any]:
     response = await client.get(VPIC_URL.format(vin=vin))
     response.raise_for_status()
@@ -95,22 +95,40 @@ async def _fetch(client: httpx.AsyncClient, vin: str) -> dict[str, Any]:
 
 
 async def decode(vin: str, *, client: httpx.AsyncClient | None = None) -> VinDecode:
-    """Decode a single VIN."""
+    """Decode a single VIN. Returns a stub VinDecode if vPIC rejects the VIN."""
     if client is None:
-        async with httpx.AsyncClient(timeout=15) as new_client:
-            payload = await _fetch(new_client, vin)
-    else:
+        async with httpx.AsyncClient(timeout=20) as new_client:
+            return await decode(vin, client=new_client)
+    try:
         payload = await _fetch(client, vin)
+    except httpx.HTTPStatusError as e:
+        # Don't crash a batch on rate-limit / forbidden — return an empty decode
+        # so the caller can still upsert the vehicle row with whatever it knows.
+        if e.response.status_code in (403, 429):
+            return VinDecode(
+                vin=vin, make=None, model=None, model_year=None, trim=None,
+                series=None, body_class=None, drive_type=None, engine_model=None,
+                fuel_type_primary=None, electrification_level=None,
+                raw={"_error": f"http_{e.response.status_code}"},
+            )
+        raise
     return _parse_payload(vin, payload)
 
 
-async def decode_many(vins: list[str], *, concurrency: int = 5) -> list[VinDecode]:
-    """Decode many VINs concurrently. Order is preserved."""
+async def decode_many(vins: list[str], *, concurrency: int = 2, delay_seconds: float = 0.4) -> list[VinDecode]:
+    """Decode many VINs concurrently. Order is preserved.
+
+    Default concurrency=2 to stay under vPIC's per-IP rate ceiling. A small
+    inter-request delay smooths bursts further.
+    """
     sem = asyncio.Semaphore(concurrency)
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=20, headers={"user-agent": "tundra-tracker/0.1 (+https://github.com/sethcalkins/tundra-tracker)"}) as client:
 
         async def _one(v: str) -> VinDecode:
             async with sem:
-                return await decode(v, client=client)
+                result = await decode(v, client=client)
+                if delay_seconds:
+                    await asyncio.sleep(delay_seconds)
+                return result
 
         return await asyncio.gather(*(_one(v) for v in vins))

@@ -17,6 +17,8 @@ dependencies = [
     "structlog>=24.4",
     "tenacity>=9.0",
     "pdfplumber>=0.11.9",
+    "cloudscraper>=1.2.71",
+    "curl-cffi>=0.15.0",
 ]
 
 [project.scripts]

@@ -9,7 +9,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from tundra.pipeline.ingest import ingest_file
+from tundra.carvana import fetch_to_payload
+from tundra.pipeline.ingest import ingest_file, ingest_payload
 from tundra.recalls import (
     ENGINE_RECALL_24V381_CAMPAIGNS,
     ENGINE_RECALL_25V767_CAMPAIGNS,
@@ -38,38 +39,83 @@ SAMPLE_VINS: tuple[str, ...] = (
 
 @app.command()
 def scrape(
-    max_pages: Annotated[int | None, typer.Option(help="Override CARVANA_MAX_PAGES.")] = None,
+    year_min: Annotated[int, typer.Option(help="Minimum model year filter.")] = 2022,
+    year_max: Annotated[int | None, typer.Option(help="Maximum model year (omit for no cap).")] = None,
+    max_pages: Annotated[int, typer.Option(help="Cap on Carvana pagination depth.")] = 20,
+    delay_seconds: Annotated[float, typer.Option(help="Polite delay between page fetches.")] = 8.0,
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Fetch only, don't ingest.")] = False,
 ) -> None:
-    """Scrape current Carvana inventory for 3rd-gen Tundras (2022+)."""
-    console.print("[yellow]scrape: not implemented yet (Phase 2)[/yellow]")
-    raise typer.Exit(code=1)
+    """Scrape Carvana inventory via cloudscraper and ingest into Postgres."""
+    payload = fetch_to_payload(
+        year_min=year_min,
+        year_max=year_max,
+        max_pages=max_pages,
+        delay_seconds=delay_seconds,
+    )
+
+    pages = payload.get("pages_fetched", [])
+    summary = Table(title=f"Carvana scrape ({len(payload['listings'])} unique VINs)")
+    for col in ("page", "status", "new listings", "bytes"):
+        summary.add_column(col, justify="right")
+    for p in pages:
+        summary.add_row(str(p["page"]), str(p["status"]), str(p["listings"]), f"{p['bytes']:,}")
+    console.print(summary)
+
+    if dry_run:
+        console.print("[yellow]--dry-run set; skipping ingest.[/yellow]")
+        return
+
+    stats = asyncio.run(ingest_payload(payload))
+    ingest = Table(title="Ingest")
+    ingest.add_column("metric")
+    ingest.add_column("count", justify="right")
+    ingest.add_row("listings seen", str(stats.listings_seen))
+    ingest.add_row("invalid VINs (skipped)", str(stats.invalid_vins))
+    ingest.add_row("new vehicles", str(stats.new_vehicles))
+    ingest.add_row("updated vehicles", str(stats.updated_vehicles))
+    ingest.add_row("observations inserted", str(stats.observations_inserted))
+    ingest.add_row("vPIC decodes", str(stats.vins_decoded))
+    console.print(ingest)
 
 
 @app.command(name="decode-vins")
 def decode_vins(
     sample: Annotated[bool, typer.Option("--sample", help="Decode hand-curated sample only.")] = False,
+    limit: Annotated[int | None, typer.Option(help="Cap on VINs decoded this run.")] = None,
+    concurrency: Annotated[int, typer.Option(help="Parallel vPIC requests.")] = 2,
+    delay_seconds: Annotated[float, typer.Option(help="Pause between vPIC calls.")] = 0.5,
 ) -> None:
-    """Backfill VIN-decode data via NHTSA vPIC for vehicles missing it."""
-    if not sample:
-        console.print("[yellow]decode-vins (DB-driven mode): not implemented yet (Phase 2)[/yellow]")
-        console.print("[dim]Run with --sample to decode the hand-curated sample VINs.[/dim]")
-        raise typer.Exit(code=1)
+    """Backfill VIN-decode data via NHTSA vPIC for vehicles missing engine info."""
+    if sample:
+        decoded = asyncio.run(decode_many(list(SAMPLE_VINS)))
+        table = Table(title="NHTSA vPIC decode (sample)", show_lines=False)
+        for col in ("VIN", "Year", "Trim", "Drive", "Engine", "Hybrid", "V35A?"):
+            table.add_column(col)
+        for d in decoded:
+            table.add_row(
+                d.vin,
+                str(d.model_year or "?"),
+                d.trim or "?",
+                (d.drive_type or "?").replace("/4-Wheel Drive/4x4", ""),
+                d.engine_model or "?",
+                "yes" if d.is_hybrid else "no" if d.is_hybrid is False else "?",
+                "yes" if d.has_v35a_engine else "no",
+            )
+        console.print(table)
+        return
 
-    decoded = asyncio.run(decode_many(list(SAMPLE_VINS)))
-
-    table = Table(title="NHTSA vPIC decode (sample)", show_lines=False)
-    for col in ("VIN", "Year", "Trim", "Drive", "Engine", "Hybrid", "V35A?"):
-        table.add_column(col)
-    for d in decoded:
-        table.add_row(
-            d.vin,
-            str(d.model_year or "?"),
-            d.trim or "?",
-            (d.drive_type or "?").replace("/4-Wheel Drive/4x4", ""),
-            d.engine_model or "?",
-            "yes" if d.is_hybrid else "no" if d.is_hybrid is False else "?",
-            "yes" if d.has_v35a_engine else "no",
-        )
+    # DB backfill mode
+    from tundra.pipeline.decoder import backfill_decodes
+    stats = asyncio.run(
+        backfill_decodes(limit=limit, concurrency=concurrency, delay_seconds=delay_seconds)
+    )
+    table = Table(title="vPIC backfill")
+    table.add_column("metric")
+    table.add_column("count", justify="right")
+    table.add_row("candidates (vehicles missing engine_code)", str(stats.candidates))
+    table.add_row("decoded ok", str(stats.decoded_ok))
+    table.add_row("decoded failed (403/429/empty)", str(stats.decoded_failed))
+    table.add_row("rows updated", str(stats.rows_updated))
     console.print(table)
 
 
