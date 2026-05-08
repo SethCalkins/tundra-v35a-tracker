@@ -188,6 +188,36 @@ def ingest_listings(
     console.print(table)
 
 
+@app.command(name="carfax-fetch")
+def carfax_fetch(
+    limit: Annotated[int | None, typer.Option(help="Cap on VINs fetched this run.")] = None,
+    headless: Annotated[bool, typer.Option("--headless", help="Headless mode. Default is headed because patchright passes Akamai better with a visible window.")] = False,
+    delay_seconds: Annotated[float, typer.Option(help="Pause between Carfax fetches.")] = 4.0,
+) -> None:
+    """Fetch Carfax partner reports for every recall-eligible V35A truck.
+
+    Uses patchright + persistent Chrome profile to pass Akamai bot detection.
+    Per-VIN flow: fetch → parse → upsert in its own transaction so partial
+    runs survive interrupts.
+    """
+    from tundra.pipeline.carfax_runner import run as carfax_run
+
+    stats = asyncio.run(carfax_run(limit=limit, headless=headless, delay_seconds=delay_seconds))
+
+    table = Table(title="Carfax run")
+    table.add_column("metric")
+    table.add_column("count", justify="right")
+    table.add_row("candidate VINs", str(stats.candidates))
+    table.add_row("fetched", str(stats.fetched))
+    table.add_row("CAPTCHA encountered", str(stats.captcha_seen))
+    table.add_row("no report (Carfax doesn't have it)", str(stats.no_report))
+    table.add_row("parsed ok", str(stats.parsed_ok))
+    table.add_row("[bold]engine REPLACED[/bold]", str(stats.engine_replaced))
+    table.add_row("engine recall open (not replaced)", str(stats.engine_open))
+    table.add_row("engine recall not listed", str(stats.engine_not_listed))
+    console.print(table)
+
+
 @app.command(name="run-all")
 def run_all(
     max_pages: Annotated[int, typer.Option(help="Carvana pagination cap.")] = 10,

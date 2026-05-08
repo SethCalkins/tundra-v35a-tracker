@@ -19,6 +19,7 @@ dependencies = [
     "pdfplumber>=0.11.9",
     "cloudscraper>=1.2.71",
     "curl-cffi>=0.15.0",
+    "patchright>=1.59.1",
 ]
 
 [project.scripts]
