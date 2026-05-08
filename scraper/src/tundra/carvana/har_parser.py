@@ -157,8 +157,22 @@ def _normalise_block(raw: str) -> dict[str, Any] | None:
     if trim_m:
         trim = trim_m.group(1).strip()
 
+    # Carvana's JSON-LD includes both:
+    #   - "sku": 10-digit internal product id
+    #   - "url": the actual user-facing URL ending in a 7-digit slug
+    # The URL slug is the only reliable way to deep-link back to the listing.
     sku = grab_num("sku")
     sku_str = str(int(sku)) if sku is not None else None
+
+    listing_url = grab_str("url")
+    listing_id: str | None = None
+    if listing_url:
+        m = re.search(r"/vehicle/(\d+)", listing_url)
+        if m:
+            listing_id = m.group(1)
+    if listing_id is None and sku_str:
+        # Fall back to sku, but the URL probably won't resolve (different ID space).
+        listing_id = sku_str
 
     return {
         "vin": vin,
@@ -172,12 +186,13 @@ def _normalise_block(raw: str) -> dict[str, Any] | None:
         "exterior_color": None,
         "body_style": None,
         "is_hybrid_hint": is_hybrid,
-        "listing_id": sku_str,
-        "listing_url": f"https://www.carvana.com/vehicle/{sku_str}" if sku_str else None,
+        "listing_id": listing_id,
+        "listing_url": listing_url,
         "raw": {
             "source": "carvana-har",
             "description": description,
             "image": grab_str("image"),
+            "sku": sku_str,
         },
     }
 

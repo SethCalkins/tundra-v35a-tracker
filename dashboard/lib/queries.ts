@@ -208,6 +208,204 @@ export async function getVehiclesWithLatestListing(
   return query<VehicleWithListing>(sql, params);
 }
 
+export interface MileageBucket {
+  bucket_floor: number;
+  count: number;
+  hybrid: number;
+  nonhybrid: number;
+}
+
+/**
+ * Histogram of latest-observed mileage among 3rd-gen V35A trucks, in 10k bins.
+ */
+export async function getMileageHistogram(): Promise<MileageBucket[]> {
+  const rows = await query<{
+    bucket_floor: number;
+    count: string;
+    hybrid: string;
+    nonhybrid: string;
+  }>(`
+    WITH latest AS (
+      SELECT DISTINCT ON (lo.vin) lo.vin, lo.mileage
+        FROM listing_observations lo
+        JOIN vehicles v ON v.vin = lo.vin
+        WHERE v.engine_code ILIKE '%V35A%' AND v.model_year >= 2022
+        ORDER BY lo.vin, lo.observed_at DESC
+    )
+    SELECT
+      LEAST((mileage / 10000) * 10000, 200000)                                AS bucket_floor,
+      COUNT(*)::text                                                          AS count,
+      SUM(CASE WHEN v.is_hybrid THEN 1 ELSE 0 END)::text                      AS hybrid,
+      SUM(CASE WHEN v.is_hybrid IS FALSE THEN 1 ELSE 0 END)::text             AS nonhybrid
+    FROM latest l
+    JOIN vehicles v ON v.vin = l.vin
+    WHERE l.mileage IS NOT NULL
+    GROUP BY 1
+    ORDER BY 1
+  `);
+  return rows.map((r) => ({
+    bucket_floor: Number(r.bucket_floor),
+    count: Number(r.count),
+    hybrid: Number(r.hybrid),
+    nonhybrid: Number(r.nonhybrid),
+  }));
+}
+
+export interface HighMileageVehicle {
+  vin: string;
+  model_year: number | null;
+  trim: string | null;
+  is_hybrid: boolean | null;
+  mileage: number;
+  asking_price_usd: number | null;
+  listing_url: string | null;
+  recall_24v381: string | null;
+  recall_25v767: string | null;
+  age_years: number | null;
+  miles_per_year: number | null;
+}
+
+export async function getHighMileageVehicles(limit = 15): Promise<HighMileageVehicle[]> {
+  const rows = await query<{
+    vin: string;
+    model_year: number | null;
+    trim: string | null;
+    is_hybrid: boolean | null;
+    mileage: number;
+    asking_price_usd: number | null;
+    listing_url: string | null;
+    recall_24v381: string | null;
+    recall_25v767: string | null;
+  }>(`
+    WITH latest AS (
+      SELECT DISTINCT ON (lo.vin) lo.vin, lo.mileage, lo.asking_price_usd, lo.url AS listing_url
+        FROM listing_observations lo
+        JOIN vehicles v ON v.vin = lo.vin
+        WHERE v.engine_code ILIKE '%V35A%' AND v.model_year >= 2022
+        ORDER BY lo.vin, lo.observed_at DESC
+    )
+    SELECT v.vin, v.model_year, v.trim, v.is_hybrid,
+           l.mileage, l.asking_price_usd, l.listing_url,
+           rs1.status AS recall_24v381,
+           rs2.status AS recall_25v767
+      FROM latest l
+      JOIN vehicles v ON v.vin = l.vin
+      LEFT JOIN recall_status rs1 ON rs1.vin = v.vin AND rs1.recall_id = '24V381'
+      LEFT JOIN recall_status rs2 ON rs2.vin = v.vin AND rs2.recall_id = '25V767'
+     WHERE l.mileage IS NOT NULL
+     ORDER BY l.mileage DESC
+     LIMIT $1
+  `, [limit]);
+
+  // Toyota MY for the 3rd gen begins production in fall of (year-1)
+  const currentYear = new Date().getFullYear();
+  return rows.map((r) => {
+    const ageYears =
+      r.model_year !== null ? Math.max(0.5, currentYear - r.model_year + 0.5) : null;
+    const milesPerYear =
+      ageYears !== null && ageYears > 0 ? Math.round(r.mileage / ageYears) : null;
+    return { ...r, age_years: ageYears, miles_per_year: milesPerYear };
+  });
+}
+
+export interface MileageVsAgePoint {
+  vin: string;
+  age_months: number;
+  mileage: number;
+  is_hybrid: boolean | null;
+  has_open_recall: boolean;
+}
+
+export async function getMileageVsAge(): Promise<MileageVsAgePoint[]> {
+  const rows = await query<{
+    vin: string;
+    age_months: string;
+    mileage: number;
+    is_hybrid: boolean | null;
+    has_open_recall: boolean;
+  }>(`
+    WITH latest AS (
+      SELECT DISTINCT ON (lo.vin) lo.vin, lo.mileage
+        FROM listing_observations lo
+        JOIN vehicles v ON v.vin = lo.vin
+        WHERE v.engine_code ILIKE '%V35A%' AND v.model_year >= 2022
+        ORDER BY lo.vin, lo.observed_at DESC
+    )
+    SELECT
+      v.vin,
+      ((EXTRACT(EPOCH FROM NOW()) -
+        EXTRACT(EPOCH FROM make_timestamp(v.model_year, 1, 1, 0, 0, 0)))
+       / (3600.0 * 24 * 30.44))::int::text                                                       AS age_months,
+      l.mileage,
+      v.is_hybrid,
+      EXISTS(
+        SELECT 1 FROM recall_status rs
+         WHERE rs.vin = v.vin AND rs.status = 'open'
+      )                                                                                          AS has_open_recall
+    FROM latest l
+    JOIN vehicles v ON v.vin = l.vin
+    WHERE l.mileage IS NOT NULL AND v.model_year IS NOT NULL
+  `);
+  return rows.map((r) => ({
+    vin: r.vin,
+    age_months: Number(r.age_months),
+    mileage: Number(r.mileage),
+    is_hybrid: r.is_hybrid,
+    has_open_recall: r.has_open_recall,
+  }));
+}
+
+export interface RecallByMileageBucket {
+  bucket_floor: number;
+  total: number;
+  any_open: number;
+  not_listed: number;
+  not_polled: number;
+}
+
+export async function getRecallByMileage(): Promise<RecallByMileageBucket[]> {
+  const rows = await query<{
+    bucket_floor: string;
+    total: string;
+    any_open: string;
+    not_listed: string;
+    not_polled: string;
+  }>(`
+    WITH latest AS (
+      SELECT DISTINCT ON (lo.vin) lo.vin, lo.mileage
+        FROM listing_observations lo
+        JOIN vehicles v ON v.vin = lo.vin
+        WHERE v.engine_code ILIKE '%V35A%' AND v.model_year BETWEEN 2022 AND 2024
+        ORDER BY lo.vin, lo.observed_at DESC
+    ),
+    classified AS (
+      SELECT
+        l.vin,
+        LEAST((l.mileage / 10000) * 10000, 100000) AS bucket_floor,
+        EXISTS(SELECT 1 FROM recall_status rs WHERE rs.vin = l.vin AND rs.status = 'open') AS any_open,
+        EXISTS(SELECT 1 FROM recall_status rs WHERE rs.vin = l.vin) AS polled
+      FROM latest l
+      WHERE l.mileage IS NOT NULL
+    )
+    SELECT
+      bucket_floor::text,
+      COUNT(*)::text                                                          AS total,
+      SUM(CASE WHEN any_open THEN 1 ELSE 0 END)::text                          AS any_open,
+      SUM(CASE WHEN polled AND NOT any_open THEN 1 ELSE 0 END)::text           AS not_listed,
+      SUM(CASE WHEN NOT polled THEN 1 ELSE 0 END)::text                        AS not_polled
+    FROM classified
+    GROUP BY bucket_floor
+    ORDER BY bucket_floor
+  `);
+  return rows.map((r) => ({
+    bucket_floor: Number(r.bucket_floor),
+    total: Number(r.total),
+    any_open: Number(r.any_open),
+    not_listed: Number(r.not_listed),
+    not_polled: Number(r.not_polled),
+  }));
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const rows = await query<{ day: string; recall_id: string; new_status: string; count: string }>(
     `SELECT date_trunc('day', observed_at)::date::text AS day,
