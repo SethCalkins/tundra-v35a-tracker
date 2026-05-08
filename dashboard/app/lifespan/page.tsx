@@ -1,21 +1,30 @@
+import { ComplaintsTimelineChart } from "@/components/complaints-timeline-chart";
 import { FailureMileageChart } from "@/components/failure-mileage-chart";
+import { FailurePhrasesChart } from "@/components/failure-phrases-chart";
 import { PageHeader } from "@/components/page-header";
+import { StateDistributionChart } from "@/components/state-distribution-chart";
 import { StatCard } from "@/components/stat-card";
 import {
   getComplaintTotals,
+  getComplaintsByMonth,
+  getComplaintsByState,
   getEngineComplaintSamples,
   getFailureMileageHistogram,
   getInventoryWithComplaints,
+  getTopFailurePhrases,
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Lifespan() {
-  const [hist, totals, samples, crossref] = await Promise.all([
+  const [hist, totals, samples, crossref, timeline, phrases, byState] = await Promise.all([
     getFailureMileageHistogram(),
     getComplaintTotals(),
     getEngineComplaintSamples(20),
     getInventoryWithComplaints(),
+    getComplaintsByMonth(),
+    getTopFailurePhrases(),
+    getComplaintsByState(12),
   ]);
 
   return (
@@ -54,7 +63,7 @@ export default async function Lifespan() {
         />
       </section>
 
-      <section className="mb-10 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="mb-1 text-base font-medium">Complaints by mileage bucket</h2>
         <p className="mb-4 max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
           The amber bars (engine-component complaints) are the V35A failure signal.
@@ -64,6 +73,31 @@ export default async function Lifespan() {
           to NHTSA at all.
         </p>
         <FailureMileageChart data={hist} />
+      </section>
+
+      <section className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-1 text-base font-medium">Complaints over time</h2>
+          <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Monthly NHTSA complaint volume for 2022-2024 Tundra. Engine-component complaints in amber, towed cases in red.
+          </p>
+          <ComplaintsTimelineChart data={timeline} />
+        </div>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="mb-1 text-base font-medium">Geographic distribution</h2>
+          <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+            Top states by Tundra engine-complaint volume. Reflects where 3rd-gen Tundras are most concentrated, not just where they fail most.
+          </p>
+          <StateDistributionChart data={byState} />
+        </div>
+      </section>
+
+      <section className="mb-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-1 text-base font-medium">What owners actually report</h2>
+        <p className="mb-4 max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
+          Phrase frequency in engine-component complaint narratives. &quot;Stalled&quot; and &quot;towed&quot; cluster the catastrophic failure mode; &quot;main bearing&quot; is the actual mechanical cause Toyota called out.
+        </p>
+        <FailurePhrasesChart data={phrases} />
       </section>
 
       <section className="mb-10 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">

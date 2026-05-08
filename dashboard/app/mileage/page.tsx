@@ -1,9 +1,11 @@
 import { MileageVsAgeChart } from "@/components/mileage-vs-age-chart";
 import { PageHeader } from "@/components/page-header";
+import { PriceMileageChart } from "@/components/price-mileage-chart";
 import { StatCard } from "@/components/stat-card";
 import {
   getHighMileageVehicles,
   getMileageVsAge,
+  getPriceMileagePoints,
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +27,10 @@ function StatusBadge({ a, b }: { a: string | null; b: string | null }) {
 }
 
 export default async function Mileage() {
-  const [scatter, highMileage] = await Promise.all([
+  const [scatter, highMileage, priceMileage] = await Promise.all([
     getMileageVsAge(),
     getHighMileageVehicles(15),
+    getPriceMileagePoints(),
   ]);
 
   // Annualised stats — the apples-to-apples view since older trucks naturally have more miles.
@@ -74,7 +77,17 @@ export default async function Mileage() {
         />
       </section>
 
-      <section className="mb-10 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-1 text-base font-medium">Price vs mileage</h2>
+        <p className="mb-4 max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
+          Carvana asking price vs current mileage for our V35A 2022+ cohort.
+          Each dot is one truck. Hybrids in teal, non-hybrids in blue. The downward
+          slope shows how much price typically falls per 10k of mileage.
+        </p>
+        <PriceMileageChart data={priceMileage} />
+      </section>
+
+      <section className="mb-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-base font-medium">Mileage vs age</h2>
         <p className="mt-1 max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
           Each dot is one 3rd-gen V35A truck currently on Carvana. Diagonal dashed lines

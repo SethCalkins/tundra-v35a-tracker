@@ -642,6 +642,189 @@ export async function getComplaintTotals(): Promise<ComplaintTotals> {
   };
 }
 
+// ── New chart queries ─────────────────────────────────────────────────────
+
+export interface RecallStateByCohort {
+  year: number;
+  hybrid: boolean;
+  open: number;
+  pending: number;
+  unknown: number;
+}
+
+export async function getRecallStatesByCohort(): Promise<RecallStateByCohort[]> {
+  const rows = await query<{
+    year: string;
+    hybrid: boolean;
+    open: string;
+    pending: string;
+    unknown: string;
+  }>(`
+    WITH classified AS (
+      SELECT
+        v.model_year::text                              AS year,
+        v.is_hybrid                                     AS hybrid,
+        CASE
+          WHEN rs1.status = 'open' OR cf.engine_recall_status = 'remedy_available' THEN 'open'
+          WHEN rs2.status = 'open' OR cf.engine_recall_status = 'remedy_not_yet_available' THEN 'pending'
+          ELSE 'unknown'
+        END                                              AS state
+      FROM vehicles v
+      LEFT JOIN recall_status rs1 ON rs1.vin = v.vin AND rs1.recall_id = '24V381'
+      LEFT JOIN recall_status rs2 ON rs2.vin = v.vin AND rs2.recall_id = '25V767'
+      LEFT JOIN LATERAL (
+        SELECT engine_recall_status FROM carfax_observations
+         WHERE vin = v.vin ORDER BY observed_at DESC LIMIT 1
+      ) cf ON TRUE
+      WHERE v.engine_code ILIKE '%V35A%'
+        AND v.model_year BETWEEN 2022 AND 2024
+    )
+    SELECT year, hybrid,
+      SUM((state='open')::int)::text     AS open,
+      SUM((state='pending')::int)::text  AS pending,
+      SUM((state='unknown')::int)::text  AS unknown
+    FROM classified
+    GROUP BY year, hybrid
+    ORDER BY year, hybrid NULLS LAST
+  `);
+  return rows.map((r) => ({
+    year: Number(r.year),
+    hybrid: r.hybrid,
+    open: Number(r.open),
+    pending: Number(r.pending),
+    unknown: Number(r.unknown),
+  }));
+}
+
+export interface ComplaintsByMonth {
+  month: string; // YYYY-MM
+  total: number;
+  engine: number;
+  with_tow: number;
+}
+
+export async function getComplaintsByMonth(): Promise<ComplaintsByMonth[]> {
+  const rows = await query<{
+    month: string;
+    total: string;
+    engine: string;
+    with_tow: string;
+  }>(`
+    SELECT
+      to_char(date_trunc('month', fail_date), 'YYYY-MM')      AS month,
+      COUNT(*)::text                                          AS total,
+      SUM((component ILIKE '%engine%')::int)::text             AS engine,
+      SUM((component ILIKE '%engine%' AND vehicle_towed)::int)::text AS with_tow
+    FROM nhtsa_complaints
+    WHERE make='TOYOTA' AND model='TUNDRA'
+      AND model_year BETWEEN 2022 AND 2024
+      AND fail_date IS NOT NULL
+      AND fail_date >= '2022-01-01'
+    GROUP BY 1
+    ORDER BY 1
+  `);
+  return rows.map((r) => ({
+    month: r.month,
+    total: Number(r.total),
+    engine: Number(r.engine),
+    with_tow: Number(r.with_tow),
+  }));
+}
+
+export interface FailurePhrase {
+  phrase: string;
+  count: number;
+}
+
+export async function getTopFailurePhrases(): Promise<FailurePhrase[]> {
+  // Hardcoded phrase set + COUNT(*) WHERE description ILIKE '%phrase%'
+  // Cleaner than full-text NLP for our scale.
+  const phrases = [
+    "stall",
+    "main bearing",
+    "engine replac",
+    "knocking",
+    "loss of power",
+    "towed",
+    "no start",
+    "check engine",
+    "loss of motive",
+    "dealer",
+    "warranty",
+    "hesitation",
+    "vibration",
+    "pull over when safe",
+    "metal shaving",
+    "oil pressure",
+    "rough idle",
+  ];
+  const out: FailurePhrase[] = [];
+  for (const p of phrases) {
+    const r = await queryOne<{ count: string }>(
+      `SELECT COUNT(*)::text AS count
+         FROM nhtsa_complaints
+        WHERE make='TOYOTA' AND model='TUNDRA'
+          AND model_year BETWEEN 2022 AND 2024
+          AND component ILIKE '%engine%'
+          AND description ILIKE $1`,
+      [`%${p}%`],
+    );
+    if (r) out.push({ phrase: p, count: Number(r.count) });
+  }
+  return out.filter((p) => p.count > 0).sort((a, b) => b.count - a.count);
+}
+
+export interface ComplaintsByState {
+  state: string;
+  total: number;
+  engine: number;
+}
+
+export async function getComplaintsByState(limit = 12): Promise<ComplaintsByState[]> {
+  const rows = await query<{ state: string; total: string; engine: string }>(`
+    SELECT state,
+           COUNT(*)::text                                  AS total,
+           SUM((component ILIKE '%engine%')::int)::text    AS engine
+      FROM nhtsa_complaints
+     WHERE make='TOYOTA' AND model='TUNDRA'
+       AND model_year BETWEEN 2022 AND 2024
+       AND state IS NOT NULL AND state != ''
+     GROUP BY state
+     ORDER BY engine DESC, total DESC
+     LIMIT $1
+  `, [limit]);
+  return rows.map((r) => ({ state: r.state, total: Number(r.total), engine: Number(r.engine) }));
+}
+
+export interface PriceMileagePoint {
+  vin: string;
+  mileage: number;
+  price: number;
+  is_hybrid: boolean | null;
+  model_year: number | null;
+}
+
+export async function getPriceMileagePoints(): Promise<PriceMileagePoint[]> {
+  return query<PriceMileagePoint>(`
+    WITH latest AS (
+      SELECT DISTINCT ON (lo.vin) lo.vin, lo.mileage, lo.asking_price_usd
+        FROM listing_observations lo
+        JOIN vehicles v ON v.vin = lo.vin
+        WHERE v.engine_code ILIKE '%V35A%' AND v.model_year >= 2022
+        ORDER BY lo.vin, lo.observed_at DESC
+    )
+    SELECT v.vin,
+           l.mileage,
+           l.asking_price_usd AS price,
+           v.is_hybrid,
+           v.model_year
+      FROM latest l
+      JOIN vehicles v ON v.vin = l.vin
+     WHERE l.mileage IS NOT NULL
+       AND l.asking_price_usd IS NOT NULL
+  `);
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const rows = await query<{ day: string; recall_id: string; new_status: string; count: string }>(
     `SELECT date_trunc('day', observed_at)::date::text AS day,

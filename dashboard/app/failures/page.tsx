@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/page-header";
+import { RecallStatesChart } from "@/components/recall-states-chart";
 import {
   getCombinedRecallStates,
+  getRecallStatesByCohort,
   type CombinedRecallRow,
   type EngineRecallState,
 } from "@/lib/queries";
@@ -58,7 +60,10 @@ function summariseStates(rows: CombinedRecallRow[]) {
 }
 
 export default async function Failures() {
-  const rows = await getCombinedRecallStates();
+  const [rows, cohortChart] = await Promise.all([
+    getCombinedRecallStates(),
+    getRecallStatesByCohort(),
+  ]);
   const buckets = summariseStates(rows);
   const total = rows.length;
 
@@ -186,8 +191,19 @@ export default async function Failures() {
         </div>
       </section>
 
+      {/* Stacked bar chart of cohort states */}
+      <section className="mb-10 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 className="mb-1 text-base font-medium">Recall states by cohort</h2>
+        <p className="mb-5 max-w-3xl text-sm text-zinc-600 dark:text-zinc-400">
+          Each bar is one model-year × powertrain slice of the V35A 2022-2024 cohort.
+          Amber = engine recall currently open. Orange = in scope but Toyota&apos;s remedy
+          isn&apos;t available yet. Gray = not currently flagged (out of scope OR completed).
+        </p>
+        <RecallStatesChart data={cohortChart} />
+      </section>
+
       {/* Year × powertrain table */}
-      <section className="mb-10 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <section className="mb-10 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="border-b border-zinc-200 px-5 py-3 text-sm font-medium dark:border-zinc-800">
           Cohort × powertrain breakdown
         </h2>
