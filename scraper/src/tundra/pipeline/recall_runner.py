@@ -8,9 +8,11 @@ affected_years and the engine is V35A:
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 
-from sqlalchemy import and_, or_, select
+import structlog
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from tundra.db import RecallStatus, RecallStatusEvent, Vehicle, session_scope
@@ -18,8 +20,11 @@ from tundra.recalls import (
     ENGINE_RECALL_24V381_CAMPAIGNS,
     ENGINE_RECALL_25V767_CAMPAIGNS,
     RecallPollResult,
-    poll_many,
+    poll,
+    recall_browser,
 )
+
+log = structlog.get_logger()
 
 # Recall metadata baked in for the runner. Could lift to DB later.
 TRACKED_RECALLS: list[dict] = [
@@ -70,12 +75,79 @@ def _classify(result: RecallPollResult, recall: dict) -> str:
     return "not_listed"
 
 
+def _persist_one(
+    result: RecallPollResult, model_year: int | None, stats: PollRunStats
+) -> dict[str, str]:
+    """Upsert recall_status for one VIN and append events on changes.
+
+    Returns a {recall_id: new_status} map so the caller can log a one-line
+    summary per VIN. Each call commits in its own transaction so partial
+    progress survives interrupts.
+    """
+    summary: dict[str, str] = {}
+    with session_scope() as session:
+        existing = {
+            r.recall_id: r.status
+            for r in session.execute(
+                select(RecallStatus).where(RecallStatus.vin == result.vin)
+            ).scalars()
+        }
+
+        for recall in TRACKED_RECALLS:
+            if model_year is not None and model_year not in recall["affected_years"]:
+                continue
+
+            new_status = _classify(result, recall)
+            old = existing.get(recall["id"])
+            summary[recall["id"]] = new_status
+
+            stmt = pg_insert(RecallStatus).values(
+                vin=result.vin,
+                recall_id=recall["id"],
+                status=new_status,
+                source="toyota_recall_lookup",
+                checked_at=result.polled_at,
+            ).on_conflict_do_update(
+                index_elements=["vin", "recall_id"],
+                set_={
+                    "status": new_status,
+                    "source": "toyota_recall_lookup",
+                    "checked_at": result.polled_at,
+                },
+            )
+            session.execute(stmt)
+            stats.rows_upserted += 1
+
+            if old != new_status:
+                session.add(
+                    RecallStatusEvent(
+                        vin=result.vin,
+                        recall_id=recall["id"],
+                        prev_status=old,
+                        new_status=new_status,
+                        observed_at=result.polled_at,
+                    )
+                )
+                stats.status_changes += 1
+                if old is None and new_status == "open":
+                    stats.new_open += 1
+                elif old == "open" and new_status == "not_listed":
+                    stats.open_to_not_listed += 1
+
+    return summary
+
+
 async def poll_for_db(
     *,
     limit: int | None = None,
     headless: bool = True,
     delay_seconds: float = 1.5,
 ) -> PollRunStats:
+    """Poll every recall-eligible VIN, writing per-VIN to Postgres.
+
+    Each VIN is committed in its own transaction so partial runs survive
+    interrupts and `tail -f` shows live progress.
+    """
     stats = PollRunStats()
 
     vins = _candidate_vins()
@@ -85,64 +157,44 @@ async def poll_for_db(
     if not vins:
         return stats
 
-    results = await poll_many(vins, headless=headless, delay_seconds=delay_seconds)
-    stats.polled = len(results)
-
+    # Fetch model_years up front so the per-VIN persistence loop doesn't need
+    # an extra round-trip
     with session_scope() as session:
-        # Pull the current statuses for all (vin, recall) pairs in one query
-        existing_rows = session.execute(
-            select(RecallStatus).where(RecallStatus.vin.in_(vins))
-        ).scalars().all()
-        prev_status: dict[tuple[str, str], str] = {
-            (r.vin, r.recall_id): r.status for r in existing_rows
+        years_by_vin = {
+            v: y
+            for v, y in session.execute(
+                select(Vehicle.vin, Vehicle.model_year).where(Vehicle.vin.in_(vins))
+            )
         }
 
-        for result in results:
-            vehicle_year = session.execute(
-                select(Vehicle.model_year).where(Vehicle.vin == result.vin)
-            ).scalar()
+    async with recall_browser(headless=headless) as page:
+        for idx, vin in enumerate(vins, start=1):
+            if idx > 1:
+                await asyncio.sleep(delay_seconds)
+            try:
+                result = await poll(page, vin)
+            except Exception as e:
+                log.warning("recall.poll.error", vin=vin, idx=idx, total=len(vins), error=str(e))
+                stats.failed_lookups += 1
+                continue
+
+            stats.polled += 1
             if not result.vehicle_recognized:
                 stats.failed_lookups += 1
 
-            for recall in TRACKED_RECALLS:
-                if vehicle_year is not None and vehicle_year not in recall["affected_years"]:
-                    continue
+            try:
+                summary = _persist_one(result, years_by_vin.get(vin), stats)
+            except Exception as e:
+                log.warning("recall.persist.error", vin=vin, error=str(e))
+                continue
 
-                new_status = _classify(result, recall)
-                key = (result.vin, recall["id"])
-                old = prev_status.get(key)
-
-                stmt = pg_insert(RecallStatus).values(
-                    vin=result.vin,
-                    recall_id=recall["id"],
-                    status=new_status,
-                    source="toyota_recall_lookup",
-                    checked_at=result.polled_at,
-                ).on_conflict_do_update(
-                    index_elements=["vin", "recall_id"],
-                    set_={
-                        "status": new_status,
-                        "source": "toyota_recall_lookup",
-                        "checked_at": result.polled_at,
-                    },
-                )
-                session.execute(stmt)
-                stats.rows_upserted += 1
-
-                if old != new_status:
-                    session.add(
-                        RecallStatusEvent(
-                            vin=result.vin,
-                            recall_id=recall["id"],
-                            prev_status=old,
-                            new_status=new_status,
-                            observed_at=result.polled_at,
-                        )
-                    )
-                    stats.status_changes += 1
-                    if old is None and new_status == "open":
-                        stats.new_open += 1
-                    elif old == "open" and new_status == "not_listed":
-                        stats.open_to_not_listed += 1
+            log.info(
+                "recall.poll",
+                idx=idx,
+                total=len(vins),
+                vin=vin,
+                vehicle=result.vehicle_summary or "unrecognized",
+                **{f"recall_{k}": v for k, v in summary.items()},
+            )
 
     return stats

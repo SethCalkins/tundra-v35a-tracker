@@ -3,8 +3,10 @@ from tundra.recalls.poller import (
     ENGINE_RECALL_24V381_CAMPAIGNS,
     ENGINE_RECALL_25V767_CAMPAIGNS,
     RecallPollResult,
+    poll,
     poll_many,
     poll_one,
+    recall_browser,
 )
 
 __all__ = [
@@ -12,6 +14,8 @@ __all__ = [
     "ENGINE_RECALL_24V381_CAMPAIGNS",
     "ENGINE_RECALL_25V767_CAMPAIGNS",
     "RecallPollResult",
+    "poll",
     "poll_many",
     "poll_one",
+    "recall_browser",
 ]

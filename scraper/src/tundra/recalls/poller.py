@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -161,6 +163,36 @@ async def _poll_one(page: Page, vin: str, *, timeout_ms: int = 30_000) -> Recall
         engine_recall_25v767_open=bool(set(open_campaigns) & ENGINE_RECALL_25V767_CAMPAIGNS),
         raw_text_excerpt=body_text[:600],
     )
+
+
+@asynccontextmanager
+async def recall_browser(
+    *,
+    headless: bool = True,
+    user_agent: str = DEFAULT_USER_AGENT,
+) -> AsyncIterator[Page]:
+    """Open one Chromium page for a batch of recall polls.
+
+    Use when callers want per-VIN control (incremental DB writes, live
+    progress logs) — they manage the loop themselves and call `poll(page, vin)`.
+    """
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(headless=headless)
+        context = await browser.new_context(
+            user_agent=user_agent,
+            viewport={"width": 1366, "height": 900},
+        )
+        page = await context.new_page()
+        try:
+            yield page
+        finally:
+            await context.close()
+            await browser.close()
+
+
+async def poll(page: Page, vin: str, *, timeout_ms: int = 30_000) -> RecallPollResult:
+    """Poll a single VIN using an already-open page (re-uses cookies/session)."""
+    return await _poll_one(page, vin, timeout_ms=timeout_ms)
 
 
 async def poll_many(
