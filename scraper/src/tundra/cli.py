@@ -123,12 +123,31 @@ def decode_vins(
 def poll_recalls(
     sample: Annotated[bool, typer.Option("--sample", help="Poll hand-curated sample only.")] = False,
     headed: Annotated[bool, typer.Option("--headed", help="Show the browser window.")] = False,
+    limit: Annotated[int | None, typer.Option(help="Cap on VINs polled this run.")] = None,
+    delay_seconds: Annotated[float, typer.Option(help="Polite pause between VIN polls.")] = 1.5,
 ) -> None:
-    """Refresh recall-completion status for every recall-eligible VIN."""
+    """Refresh recall-completion status for every recall-eligible VIN.
+
+    --sample polls the 4 hand-curated VINs and prints the result table.
+    Without --sample, polls every V35A 2022-2024 truck in the DB and
+    upserts recall_status + appends recall_status_events.
+    """
     if not sample:
-        console.print("[yellow]poll-recalls (DB-driven mode): not implemented yet (Phase 1.5)[/yellow]")
-        console.print("[dim]Run with --sample to poll the hand-curated sample VINs.[/dim]")
-        raise typer.Exit(code=1)
+        from tundra.pipeline.recall_runner import poll_for_db
+        stats = asyncio.run(poll_for_db(headless=not headed, limit=limit, delay_seconds=delay_seconds))
+
+        table = Table(title="Toyota recall poll (DB)")
+        table.add_column("metric")
+        table.add_column("count", justify="right")
+        table.add_row("candidate VINs", str(stats.candidates))
+        table.add_row("polled", str(stats.polled))
+        table.add_row("recall_status rows upserted", str(stats.rows_upserted))
+        table.add_row("status changes (events)", str(stats.status_changes))
+        table.add_row("  first-time open", str(stats.new_open))
+        table.add_row("  open → not_listed (remedied?)", str(stats.open_to_not_listed))
+        table.add_row("VIN not recognised by Toyota", str(stats.failed_lookups))
+        console.print(table)
+        return
 
     results = asyncio.run(poll_many(list(SAMPLE_VINS), headless=not headed))
 
