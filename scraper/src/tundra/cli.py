@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
+from tundra.pipeline.ingest import ingest_file
 from tundra.recalls import (
     ENGINE_RECALL_24V381_CAMPAIGNS,
     ENGINE_RECALL_25V767_CAMPAIGNS,
@@ -95,6 +97,29 @@ def poll_recalls(
             "[red]YES[/red]" if r.engine_recall_24v381_open else "no",
             "[red]YES[/red]" if r.engine_recall_25v767_open else "no",
         )
+    console.print(table)
+
+
+@app.command(name="ingest-listings")
+def ingest_listings(
+    path: Annotated[Path, typer.Argument(help="JSON file produced by tools/carvana-scrape.js")],
+) -> None:
+    """Ingest a Carvana scrape JSON into Postgres (vehicles + listing_observations)."""
+    if not path.exists():
+        console.print(f"[red]File not found: {path}[/red]")
+        raise typer.Exit(code=1)
+
+    stats = asyncio.run(ingest_file(path))
+
+    table = Table(title=f"Ingested {path.name}")
+    table.add_column("metric")
+    table.add_column("count", justify="right")
+    table.add_row("listings seen", str(stats.listings_seen))
+    table.add_row("invalid VINs (skipped)", str(stats.invalid_vins))
+    table.add_row("new vehicles", str(stats.new_vehicles))
+    table.add_row("updated vehicles", str(stats.updated_vehicles))
+    table.add_row("observations inserted", str(stats.observations_inserted))
+    table.add_row("vPIC decodes", str(stats.vins_decoded))
     console.print(table)
 
 
