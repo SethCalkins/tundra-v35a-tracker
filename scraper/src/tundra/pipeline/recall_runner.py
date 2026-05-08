@@ -52,8 +52,13 @@ class PollRunStats:
     failed_lookups: int = 0
 
 
-def _candidate_vins() -> list[str]:
-    """V35A trucks in any of our tracked recalls' year windows."""
+def _candidate_vins(only_missing: bool = False) -> list[str]:
+    """V35A trucks in any of our tracked recalls' year windows.
+
+    If only_missing is True, exclude VINs that already have a recall_status
+    row — useful when the cohort grew from a deeper scrape and we only want
+    to fill the gaps.
+    """
     all_years = {y for r in TRACKED_RECALLS for y in r["affected_years"]}
     with session_scope() as session:
         stmt = (
@@ -62,6 +67,10 @@ def _candidate_vins() -> list[str]:
             .where(Vehicle.engine_code.ilike("%V35A%"))
             .order_by(Vehicle.vin)
         )
+        if only_missing:
+            stmt = stmt.where(
+                ~Vehicle.vin.in_(select(RecallStatus.vin).distinct())
+            )
         return [row[0] for row in session.execute(stmt)]
 
 
@@ -142,6 +151,7 @@ async def poll_for_db(
     limit: int | None = None,
     headless: bool = True,
     delay_seconds: float = 1.5,
+    only_missing: bool = False,
 ) -> PollRunStats:
     """Poll every recall-eligible VIN, writing per-VIN to Postgres.
 
@@ -150,7 +160,7 @@ async def poll_for_db(
     """
     stats = PollRunStats()
 
-    vins = _candidate_vins()
+    vins = _candidate_vins(only_missing=only_missing)
     if limit is not None:
         vins = vins[:limit]
     stats.candidates = len(vins)

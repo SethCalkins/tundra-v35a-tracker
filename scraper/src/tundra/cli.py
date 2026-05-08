@@ -125,6 +125,7 @@ def poll_recalls(
     headed: Annotated[bool, typer.Option("--headed", help="Show the browser window.")] = False,
     limit: Annotated[int | None, typer.Option(help="Cap on VINs polled this run.")] = None,
     delay_seconds: Annotated[float, typer.Option(help="Polite pause between VIN polls.")] = 1.5,
+    only_missing: Annotated[bool, typer.Option("--only-missing", help="Skip VINs that already have a recall_status row.")] = False,
 ) -> None:
     """Refresh recall-completion status for every recall-eligible VIN.
 
@@ -134,7 +135,12 @@ def poll_recalls(
     """
     if not sample:
         from tundra.pipeline.recall_runner import poll_for_db
-        stats = asyncio.run(poll_for_db(headless=not headed, limit=limit, delay_seconds=delay_seconds))
+        stats = asyncio.run(poll_for_db(
+            headless=not headed,
+            limit=limit,
+            delay_seconds=delay_seconds,
+            only_missing=only_missing,
+        ))
 
         table = Table(title="Toyota recall poll (DB)")
         table.add_column("metric")
@@ -193,6 +199,7 @@ def carfax_fetch(
     limit: Annotated[int | None, typer.Option(help="Cap on VINs fetched this run.")] = None,
     headless: Annotated[bool, typer.Option("--headless", help="Headless mode. Default is headed because patchright passes Akamai better with a visible window.")] = False,
     delay_seconds: Annotated[float, typer.Option(help="Pause between Carfax fetches.")] = 4.0,
+    only_missing: Annotated[bool, typer.Option("--only-missing", help="Skip VINs that already have a carfax observation.")] = False,
 ) -> None:
     """Fetch Carfax partner reports for every recall-eligible V35A truck.
 
@@ -202,7 +209,9 @@ def carfax_fetch(
     """
     from tundra.pipeline.carfax_runner import run as carfax_run
 
-    stats = asyncio.run(carfax_run(limit=limit, headless=headless, delay_seconds=delay_seconds))
+    stats = asyncio.run(carfax_run(
+        limit=limit, headless=headless, delay_seconds=delay_seconds, only_missing=only_missing,
+    ))
 
     table = Table(title="Carfax run")
     table.add_column("metric")

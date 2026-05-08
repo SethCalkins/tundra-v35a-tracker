@@ -33,18 +33,27 @@ class CarfaxRunStats:
     engine_not_listed: int = 0
 
 
-def _candidate_vins() -> list[str]:
-    """V35A trucks 2022-2024 — same cohort as the Toyota recall poller."""
+def _candidate_vins(only_missing: bool = False) -> list[str]:
+    """V35A trucks 2022-2024 — same cohort as the Toyota recall poller.
+
+    If only_missing is True, exclude VINs that already have a carfax_observations
+    row — useful when the cohort grew from a deeper scrape and we only want
+    to fill the gaps.
+    """
     with session_scope() as session:
-        return [
-            row[0]
-            for row in session.execute(
-                select(Vehicle.vin)
-                .where(Vehicle.engine_code.ilike("%V35A%"))
-                .where(Vehicle.model_year.in_([2022, 2023, 2024]))
-                .order_by(Vehicle.vin)
+        stmt = (
+            select(Vehicle.vin)
+            .where(Vehicle.engine_code.ilike("%V35A%"))
+            .where(Vehicle.model_year.in_([2022, 2023, 2024]))
+            .order_by(Vehicle.vin)
+        )
+        if only_missing:
+            stmt = stmt.where(
+                ~Vehicle.vin.in_(
+                    text("SELECT DISTINCT vin FROM carfax_observations")
+                )
             )
-        ]
+        return [row[0] for row in session.execute(stmt)]
 
 
 def _persist(fetch: CarfaxFetch) -> dict:
@@ -94,9 +103,10 @@ async def run(
     limit: int | None = None,
     headless: bool = False,
     delay_seconds: float = 4.0,
+    only_missing: bool = False,
 ) -> CarfaxRunStats:
     stats = CarfaxRunStats()
-    vins = _candidate_vins()
+    vins = _candidate_vins(only_missing=only_missing)
     if limit is not None:
         vins = vins[:limit]
     stats.candidates = len(vins)

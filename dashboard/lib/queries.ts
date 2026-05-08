@@ -28,6 +28,10 @@ export interface VehicleWithListing extends Vehicle {
   asking_price_usd: number | null;
   listing_url: string | null;
   observed_at: string | null;
+  // Days since the VIN was last seen on Carvana. 0/1 = currently listed.
+  // 2+ generally means it sold (or scraper hasn't caught up).
+  days_since_last_seen: number;
+  is_currently_listed: boolean;
   recall_24v381: string | null; // 'open' | 'not_listed' | 'unknown' | null (never polled / not eligible)
   recall_25v767: string | null;
 }
@@ -405,6 +409,71 @@ export async function getRecallByMileage(): Promise<RecallByMileageBucket[]> {
     not_polled: Number(r.not_polled),
   }));
 }
+
+// Combined recall status — Toyota poll + Carfax observation per VIN.
+// Use this for the headline 'engine replaced?' question.
+export type EngineRecallState =
+  | "open"               // Toyota OR Carfax shows the engine recall as open
+  | "pending_remedy"     // 25V767 listed but Toyota's expansion remedy isn't out yet
+  | "unknown"            // Neither source lists the engine recall (out-of-scope OR completed)
+  | "not_polled"         // We haven't checked yet
+  | "post_recall_build"; // 2025+ V35A — built after Toyota fixed the manufacturing process
+
+export interface CombinedRecallRow {
+  vin: string;
+  model_year: number | null;
+  is_hybrid: boolean | null;
+  trim: string | null;
+  mileage: number | null;
+  state: EngineRecallState;
+  toyota_24v381: string | null;
+  toyota_25v767: string | null;
+  carfax_engine_status: string | null;
+  carfax_engine_listed: boolean | null;
+}
+
+export async function getCombinedRecallStates(): Promise<CombinedRecallRow[]> {
+  return query<CombinedRecallRow>(`
+    WITH latest AS (
+      SELECT DISTINCT ON (lo.vin) lo.vin, lo.mileage
+        FROM listing_observations lo
+        ORDER BY lo.vin, lo.observed_at DESC
+    ),
+    latest_carfax AS (
+      SELECT DISTINCT ON (vin) vin, engine_recall_listed, engine_recall_status
+        FROM carfax_observations
+        ORDER BY vin, observed_at DESC
+    )
+    SELECT
+      v.vin,
+      v.model_year,
+      v.is_hybrid,
+      v.trim,
+      l.mileage,
+      CASE
+        WHEN v.engine_code NOT ILIKE '%V35A%' THEN 'post_recall_build'
+        WHEN v.model_year >= 2025 THEN 'post_recall_build'
+        WHEN rs1.status = 'open' THEN 'open'
+        WHEN cf.engine_recall_status = 'remedy_available' THEN 'open'
+        WHEN cf.engine_recall_status = 'remedy_not_yet_available' THEN 'pending_remedy'
+        WHEN rs2.status = 'open' THEN 'pending_remedy'
+        WHEN rs1.vin IS NULL AND cf.vin IS NULL THEN 'not_polled'
+        ELSE 'unknown'
+      END AS state,
+      rs1.status AS toyota_24v381,
+      rs2.status AS toyota_25v767,
+      cf.engine_recall_status AS carfax_engine_status,
+      cf.engine_recall_listed AS carfax_engine_listed
+    FROM vehicles v
+    LEFT JOIN latest l ON l.vin = v.vin
+    LEFT JOIN recall_status rs1 ON rs1.vin = v.vin AND rs1.recall_id = '24V381'
+    LEFT JOIN recall_status rs2 ON rs2.vin = v.vin AND rs2.recall_id = '25V767'
+    LEFT JOIN latest_carfax cf ON cf.vin = v.vin
+    WHERE v.model_year >= 2022
+    ORDER BY v.model_year DESC, v.vin
+  `);
+}
+
 
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const rows = await query<{ day: string; recall_id: string; new_status: string; count: string }>(
