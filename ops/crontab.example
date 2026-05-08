@@ -1,0 +1,13 @@
+# 3rd-gen Tundra tracker schedule
+# Install with: crontab ops/crontab.example  (or merge into your existing crontab)
+
+PATH=/usr/local/bin:/usr/bin:/bin:/Users/sethcalkins/.local/bin
+
+# Daily Carvana scrape at 06:00 local
+0 6 * * * cd /Users/sethcalkins/github/carvana/scraper && uv run tundra scrape >> /tmp/tundra-scrape.log 2>&1
+
+# Backfill VIN decoder data twice daily (cheap; vPIC is free)
+15 */12 * * * cd /Users/sethcalkins/github/carvana/scraper && uv run tundra decode-vins >> /tmp/tundra-decode.log 2>&1
+
+# Weekly recall poll Mondays 06:30 — recall completion lags by weeks anyway
+30 6 * * 1 cd /Users/sethcalkins/github/carvana/scraper && uv run tundra poll-recalls >> /tmp/tundra-recalls.log 2>&1

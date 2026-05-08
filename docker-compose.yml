@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tundra-postgres
+    environment:
+      POSTGRES_USER: tundra
+      POSTGRES_PASSWORD: tundra
+      POSTGRES_DB: tundra
+    ports:
+      - "5433:5432"
+    volumes:
+      - tundra-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tundra -d tundra"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tundra-pgdata:
