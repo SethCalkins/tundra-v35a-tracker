@@ -189,10 +189,50 @@ def ingest_listings(
 
 
 @app.command(name="run-all")
-def run_all() -> None:
+def run_all(
+    max_pages: Annotated[int, typer.Option(help="Carvana pagination cap.")] = 10,
+    delay_seconds: Annotated[float, typer.Option(help="Pause between Carvana pages.")] = 8.0,
+    skip_poll: Annotated[bool, typer.Option("--skip-poll", help="Skip the recall poll step.")] = False,
+    poll_limit: Annotated[int | None, typer.Option(help="Cap recall polls this run.")] = None,
+) -> None:
     """Run the full pipeline: scrape → decode-vins → poll-recalls."""
-    console.print("[yellow]run-all: not implemented yet (Phase 3)[/yellow]")
-    raise typer.Exit(code=1)
+    from tundra.pipeline.decoder import backfill_decodes
+    from tundra.pipeline.recall_runner import poll_for_db
+
+    # Step 1: scrape
+    console.rule("[bold]1/3 scrape[/bold]")
+    payload = fetch_to_payload(max_pages=max_pages, delay_seconds=delay_seconds)
+    console.print(f"  fetched {len(payload['listings'])} unique VINs across {len(payload['pages_fetched'])} pages")
+    ingest_stats = asyncio.run(ingest_payload(payload))
+    console.print(
+        f"  ingest: +{ingest_stats.new_vehicles} new, "
+        f"{ingest_stats.updated_vehicles} updated, "
+        f"{ingest_stats.observations_inserted} observations"
+    )
+
+    # Step 2: vPIC backfill
+    console.rule("[bold]2/3 decode-vins[/bold]")
+    decode_stats = asyncio.run(backfill_decodes(concurrency=2, delay_seconds=0.5))
+    console.print(
+        f"  candidates {decode_stats.candidates}, "
+        f"decoded {decode_stats.decoded_ok}, "
+        f"failed {decode_stats.decoded_failed}, "
+        f"updated {decode_stats.rows_updated}"
+    )
+
+    # Step 3: recall poll
+    if skip_poll:
+        console.rule("[bold]3/3 poll-recalls (SKIPPED)[/bold]")
+        return
+
+    console.rule("[bold]3/3 poll-recalls[/bold]")
+    poll_stats = asyncio.run(poll_for_db(limit=poll_limit, delay_seconds=1.5))
+    console.print(
+        f"  candidates {poll_stats.candidates}, "
+        f"polled {poll_stats.polled}, "
+        f"upserted {poll_stats.rows_upserted}, "
+        f"changes {poll_stats.status_changes}"
+    )
 
 
 @app.command(name="verify-recalls")
