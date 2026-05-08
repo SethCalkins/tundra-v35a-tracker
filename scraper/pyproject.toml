@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "structlog>=24.4",
     "tenacity>=9.0",
+    "pdfplumber>=0.11.9",
 ]
 
 [project.scripts]
