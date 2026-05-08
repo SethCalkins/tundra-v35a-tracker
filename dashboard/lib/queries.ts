@@ -475,6 +475,173 @@ export async function getCombinedRecallStates(): Promise<CombinedRecallRow[]> {
 }
 
 
+// ── NHTSA owner complaints ────────────────────────────────────────────────
+
+export interface FailureMileageBucket {
+  bucket_floor: number;
+  bucket_label: string;
+  total_complaints: number;
+  engine_complaints: number;
+  stall_mentions: number;
+}
+
+export async function getFailureMileageHistogram(): Promise<FailureMileageBucket[]> {
+  const rows = await query<{
+    bucket_floor: string;
+    bucket_label: string;
+    total_complaints: string;
+    engine_complaints: string;
+    stall_mentions: string;
+  }>(`
+    SELECT
+      bucket_floor::text,
+      bucket_label,
+      COUNT(*)::text                                                                AS total_complaints,
+      SUM((component ILIKE '%engine%')::int)::text                                  AS engine_complaints,
+      SUM((description ILIKE '%stall%')::int)::text                                 AS stall_mentions
+    FROM (
+      SELECT
+        component, description,
+        CASE
+          WHEN miles_at_failure < 5000 THEN 0
+          WHEN miles_at_failure < 10000 THEN 5000
+          WHEN miles_at_failure < 20000 THEN 10000
+          WHEN miles_at_failure < 30000 THEN 20000
+          WHEN miles_at_failure < 40000 THEN 30000
+          WHEN miles_at_failure < 50000 THEN 40000
+          WHEN miles_at_failure < 75000 THEN 50000
+          WHEN miles_at_failure < 100000 THEN 75000
+          ELSE 100000
+        END AS bucket_floor,
+        CASE
+          WHEN miles_at_failure < 5000 THEN '0-5k'
+          WHEN miles_at_failure < 10000 THEN '5-10k'
+          WHEN miles_at_failure < 20000 THEN '10-20k'
+          WHEN miles_at_failure < 30000 THEN '20-30k'
+          WHEN miles_at_failure < 40000 THEN '30-40k'
+          WHEN miles_at_failure < 50000 THEN '40-50k'
+          WHEN miles_at_failure < 75000 THEN '50-75k'
+          WHEN miles_at_failure < 100000 THEN '75-100k'
+          ELSE '100k+'
+        END AS bucket_label
+      FROM nhtsa_complaints
+      WHERE make='TOYOTA' AND model='TUNDRA'
+        AND model_year BETWEEN 2022 AND 2024
+        AND miles_at_failure IS NOT NULL
+    ) bucketed
+    GROUP BY bucket_floor, bucket_label
+    ORDER BY bucket_floor
+  `);
+  return rows.map((r) => ({
+    bucket_floor: Number(r.bucket_floor),
+    bucket_label: r.bucket_label,
+    total_complaints: Number(r.total_complaints),
+    engine_complaints: Number(r.engine_complaints),
+    stall_mentions: Number(r.stall_mentions),
+  }));
+}
+
+export interface ComplaintSample {
+  cmplid: string;
+  vin_prefix: string | null;
+  model_year: number | null;
+  miles_at_failure: number | null;
+  fail_date: string | null;
+  component: string | null;
+  description: string | null;
+  vehicle_towed: boolean | null;
+  state: string | null;
+}
+
+export async function getEngineComplaintSamples(limit = 20): Promise<ComplaintSample[]> {
+  return query<ComplaintSample>(
+    `SELECT cmplid, vin_prefix, model_year, miles_at_failure, fail_date::text,
+            component, description, vehicle_towed, state
+       FROM nhtsa_complaints
+      WHERE make='TOYOTA' AND model='TUNDRA'
+        AND model_year BETWEEN 2022 AND 2024
+        AND component ILIKE '%engine%'
+        AND miles_at_failure IS NOT NULL
+        AND miles_at_failure > 0
+      ORDER BY miles_at_failure DESC
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export interface ComplaintCrossRef {
+  vin: string;
+  vin_prefix: string;
+  model_year: number | null;
+  is_hybrid: boolean | null;
+  trim: string | null;
+  complaints_for_prefix: number;
+  engine_complaints_for_prefix: number;
+}
+
+/** Show our Carvana inventory rows whose 11-char VIN prefix matches NHTSA complaints. */
+export async function getInventoryWithComplaints(): Promise<ComplaintCrossRef[]> {
+  return query<ComplaintCrossRef>(`
+    WITH complaint_summary AS (
+      SELECT
+        vin_prefix,
+        COUNT(*)                                                AS complaints,
+        SUM((component ILIKE '%engine%')::int)                  AS engine
+      FROM nhtsa_complaints
+      WHERE make='TOYOTA' AND model='TUNDRA' AND vin_prefix IS NOT NULL
+      GROUP BY vin_prefix
+    )
+    SELECT v.vin,
+           LEFT(v.vin, 11)                  AS vin_prefix,
+           v.model_year, v.is_hybrid, v.trim,
+           cs.complaints                     AS complaints_for_prefix,
+           cs.engine                         AS engine_complaints_for_prefix
+      FROM vehicles v
+      JOIN complaint_summary cs ON cs.vin_prefix = LEFT(v.vin, 11)
+     WHERE v.engine_code ILIKE '%V35A%'
+       AND v.model_year BETWEEN 2022 AND 2024
+     ORDER BY cs.engine DESC, v.vin
+  `);
+}
+
+export interface ComplaintTotals {
+  total: number;
+  engine_with_mileage: number;
+  median_failure_mileage: number | null;
+  earliest_failure: number | null;
+  latest_failure: number | null;
+  with_tow: number;
+}
+
+export async function getComplaintTotals(): Promise<ComplaintTotals> {
+  const row = await queryOne<{
+    total: string; engine_with_mileage: string;
+    median_failure_mileage: string | null;
+    earliest_failure: string | null; latest_failure: string | null;
+    with_tow: string;
+  }>(`
+    SELECT
+      COUNT(*)::text                                                          AS total,
+      COUNT(*) FILTER (WHERE component ILIKE '%engine%' AND miles_at_failure IS NOT NULL)::text AS engine_with_mileage,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY miles_at_failure)
+        FILTER (WHERE component ILIKE '%engine%' AND miles_at_failure IS NOT NULL) AS median_failure_mileage,
+      MIN(miles_at_failure) FILTER (WHERE component ILIKE '%engine%' AND miles_at_failure > 0)::text AS earliest_failure,
+      MAX(miles_at_failure) FILTER (WHERE component ILIKE '%engine%' AND miles_at_failure > 0)::text AS latest_failure,
+      COUNT(*) FILTER (WHERE component ILIKE '%engine%' AND vehicle_towed)::text AS with_tow
+    FROM nhtsa_complaints
+    WHERE make='TOYOTA' AND model='TUNDRA' AND model_year BETWEEN 2022 AND 2024
+  `);
+  if (!row) return { total: 0, engine_with_mileage: 0, median_failure_mileage: null, earliest_failure: null, latest_failure: null, with_tow: 0 };
+  return {
+    total: Number(row.total),
+    engine_with_mileage: Number(row.engine_with_mileage),
+    median_failure_mileage: row.median_failure_mileage ? Math.round(Number(row.median_failure_mileage)) : null,
+    earliest_failure: row.earliest_failure ? Number(row.earliest_failure) : null,
+    latest_failure: row.latest_failure ? Number(row.latest_failure) : null,
+    with_tow: Number(row.with_tow),
+  };
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const rows = await query<{ day: string; recall_id: string; new_status: string; count: string }>(
     `SELECT date_trunc('day', observed_at)::date::text AS day,

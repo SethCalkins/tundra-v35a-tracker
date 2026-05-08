@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 const NAV = [
   { href: "/", label: "Overview" },
   { href: "/failures", label: "Engine Failures" },
+  { href: "/lifespan", label: "Lifespan" },
   { href: "/mileage", label: "Mileage" },
   { href: "/vins", label: "VIN Explorer" },
 ];

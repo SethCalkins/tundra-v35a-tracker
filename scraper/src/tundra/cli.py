@@ -194,6 +194,31 @@ def ingest_listings(
     console.print(table)
 
 
+@app.command(name="ingest-nhtsa-complaints")
+def ingest_nhtsa_complaints(
+    refresh: Annotated[bool, typer.Option("--refresh", help="Re-download FLAT_CMPL.zip even if cached.")] = False,
+    year_min: Annotated[int, typer.Option(help="Minimum model year to ingest.")] = 2022,
+    year_max: Annotated[int | None, typer.Option(help="Maximum model year (inclusive).")] = None,
+) -> None:
+    """Download + ingest NHTSA's FLAT_CMPL.zip — owner-filed complaint records.
+
+    Filtered to Toyota Tundra MY 2022+ by default. Each record carries an
+    11-char VIN prefix, mileage at failure, and a free-text description.
+    Provides the 'how long did the engine last' signal that recall data
+    can't (because Toyota's licensing strips completion events).
+    """
+    from tundra.nhtsa import download_flat_cmpl, ingest_flat_cmpl
+    txt_path = download_flat_cmpl(force=refresh)
+    console.print(f"[dim]source: {txt_path}[/dim]")
+    stats = ingest_flat_cmpl(txt_path, model_year_min=year_min, model_year_max=year_max)
+    table = Table(title="NHTSA complaints ingest")
+    table.add_column("metric")
+    table.add_column("count", justify="right")
+    table.add_row("rows seen (Tundra MY ≥ %d)" % year_min, str(stats["seen"]))
+    table.add_row("rows upserted", str(stats["inserted"]))
+    console.print(table)
+
+
 @app.command(name="carfax-fetch")
 def carfax_fetch(
     limit: Annotated[int | None, typer.Option(help="Cap on VINs fetched this run.")] = None,
