@@ -19,6 +19,15 @@ DESC_TRIM_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# VIN position 10 (0-indexed: 9) encodes model year. Map for years we care about.
+# Carvana's "you might also like" sidebar pulls in 2nd-gen Tundras (year codes
+# A-M, plus L/M for 2020/2021). We drop them at parse time so the DB only
+# contains 3rd-gen.
+VIN_YEAR_CODES_AT_OR_AFTER_2022 = frozenset({"N", "P", "R", "S", "T", "V", "W", "X", "Y"})
+
+# Minimum model year we keep. Set higher to tighten the scope.
+MIN_MODEL_YEAR = 2022
+
 
 def _unescape_layers(text: str, max_passes: int = 4) -> str:
     """Peel JSON-string escape layers until the markers stabilise."""
@@ -146,6 +155,16 @@ def _normalise_block(raw: str) -> dict[str, Any] | None:
     description = grab_str("description") or ""
     year_m = DESC_YEAR_PATTERN.search(description)
     is_hybrid = "hybrid" in description.lower()
+
+    # Belt-and-suspenders cohort filter — drop anything pre-2022 before it lands
+    # in Postgres. Check description year first, then fall back to VIN year code.
+    if year_m:
+        if int(year_m.group(1)) < MIN_MODEL_YEAR:
+            return None
+    else:
+        # No year in description: trust the VIN year code (position 10)
+        if vin[9] not in VIN_YEAR_CODES_AT_OR_AFTER_2022:
+            return None
 
     # Trim: text between body style ("CrewMax" / "Double Cab") and bed length / mileage
     trim: str | None = None

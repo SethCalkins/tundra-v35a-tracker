@@ -41,7 +41,7 @@ SAMPLE_VINS: tuple[str, ...] = (
 def scrape(
     year_min: Annotated[int, typer.Option(help="Minimum model year filter.")] = 2022,
     year_max: Annotated[int | None, typer.Option(help="Maximum model year (omit for no cap).")] = None,
-    max_pages: Annotated[int, typer.Option(help="Cap on Carvana pagination depth.")] = 20,
+    max_pages: Annotated[int, typer.Option(help="Cap on Carvana pagination depth. Scraper stops early when no new VINs appear.")] = 30,
     delay_seconds: Annotated[float, typer.Option(help="Polite delay between page fetches.")] = 8.0,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Fetch only, don't ingest.")] = False,
 ) -> None:
