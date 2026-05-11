@@ -4,9 +4,12 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
-import { query } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
+import { validateVin } from "@/lib/vin-validation";
 
-const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/i;
+// Per-IP rate limit. Submissions are low-volume from any single owner.
+const RATE_LIMIT_PER_HOUR = 3;
+const RATE_LIMIT_PER_DAY = 8;
 
 export interface SubmitState {
   ok: boolean;
@@ -41,8 +44,35 @@ export async function submitUserReport(
   }
 
   const vin = String(formData.get("vin") ?? "").trim().toUpperCase();
-  if (!VIN_PATTERN.test(vin)) {
-    return { ok: false, error: "VIN must be exactly 17 characters (no I/O/Q)." };
+  const vinCheck = validateVin(vin);
+  if (!vinCheck.ok) {
+    return { ok: false, error: vinCheck.reason ?? "Invalid VIN." };
+  }
+
+  // Per-IP rate limit. Uses the existing user_submissions table — no extra
+  // storage needed. Counts non-honeypot rows from this IP in the last hour
+  // and last 24 hours.
+  const ip = await getIp();
+  if (ip) {
+    const oneHourAgo = new Date(Date.now() - 3600_000).toISOString();
+    const oneDayAgo  = new Date(Date.now() - 86400_000).toISOString();
+    const rate = await queryOne<{ last_hour: number; last_day: number }>(
+      `SELECT
+         SUM(CASE WHEN submitted_at > ? THEN 1 ELSE 0 END) AS last_hour,
+         SUM(CASE WHEN submitted_at > ? THEN 1 ELSE 0 END) AS last_day
+        FROM user_submissions
+       WHERE ip_address = ? AND honeypot_failed = 0`,
+      [oneHourAgo, oneDayAgo, ip],
+    );
+    const lastHour = rate?.last_hour ?? 0;
+    const lastDay  = rate?.last_day  ?? 0;
+    if (lastHour >= RATE_LIMIT_PER_HOUR || lastDay >= RATE_LIMIT_PER_DAY) {
+      return {
+        ok: false,
+        error:
+          "Thanks — looks like you've already submitted recently. Try again later, or email us if you have multiple trucks to report.",
+      };
+    }
   }
 
   const engineReplaced = formData.get("engine_replaced") === "yes";
