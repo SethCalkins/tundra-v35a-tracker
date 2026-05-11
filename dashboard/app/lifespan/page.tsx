@@ -17,7 +17,9 @@ import {
   getCumulativeFailureCurve,
   getEngineComplaintSamples,
   getFailureMileageHistogram,
+  getEngineMfrComms,
   getInventoryWithComplaints,
+  getMfrCommsTotals,
   getRecallDocuments,
   getRecallRemediation,
   getRecentUserReplacements,
@@ -63,6 +65,8 @@ export default async function Lifespan() {
     failureCurve,
     remediation,
     recallDocs,
+    engineTsbs,
+    tsbTotals,
   ] = await Promise.all([
     getFailureMileageHistogram(),
     getComplaintTotals(),
@@ -80,6 +84,8 @@ export default async function Lifespan() {
     getCumulativeFailureCurve(),
     getRecallRemediation(),
     getRecallDocuments(),
+    getEngineMfrComms(),
+    getMfrCommsTotals(),
   ]);
 
   // 24V381 latest snapshot (newest quarter)
@@ -664,6 +670,59 @@ export default async function Lifespan() {
                     Read the full filing on nhtsa.gov →
                   </a>
                 )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── Pre-recall TSB trail ───────────────────────────────────── */}
+      {engineTsbs.length > 0 && (
+        <section className="mb-12 overflow-hidden border-l-4 border-[#EB0A1E] bg-zinc-50 dark:bg-zinc-900/40">
+          <header className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
+              Pre-recall service bulletins
+            </p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight italic">
+              Toyota told dealers to swap engines before NHTSA filed a recall.
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+              Of <span className="font-bold tabular-nums">{tsbTotals.total}</span> Tundra
+              Manufacturer Communications filed with NHTSA for MY 2022+,
+              {" "}
+              <span className="font-bold tabular-nums text-[#EB0A1E]">
+                {tsbTotals.engine_keyword}
+              </span>
+              {" "}
+              explicitly reference V35A engine block, main bearing, or
+              short-block repair work — internal dealer guidance that
+              predates the 24V381 recall announcement.
+            </p>
+          </header>
+          <ul className="divide-y divide-zinc-200 bg-white dark:divide-zinc-800 dark:bg-zinc-900">
+            {engineTsbs.map((t) => (
+              <li key={t.nhtsa_id} className="px-6 py-5">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-mono text-xs font-bold tracking-tight text-[#EB0A1E]">
+                    NHTSA #{t.nhtsa_id}
+                  </span>
+                  <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                    MY {t.model_years}
+                  </span>
+                </div>
+                {t.summary && (
+                  <p className="mt-3 border-l-2 border-zinc-300 bg-zinc-50 p-3 text-xs italic leading-6 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
+                    {t.summary.length > 600 ? t.summary.slice(0, 600) + " …" : t.summary}
+                  </p>
+                )}
+                <a
+                  href={t.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-xs font-semibold text-[#EB0A1E] hover:underline"
+                >
+                  View on nhtsa.gov →
+                </a>
               </li>
             ))}
           </ul>

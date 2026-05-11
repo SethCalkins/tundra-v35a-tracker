@@ -1301,6 +1301,58 @@ export async function getRecallDocuments(): Promise<RecallDocumentRow[]> {
   }));
 }
 
+// ── NHTSA Manufacturer Communications (TSBs) ─────────────────────────────
+
+export interface MfrCommunication {
+  nhtsa_id: string;
+  model_years: string;
+  summary: string | null;
+  engine_keyword: boolean;
+  url: string;
+}
+
+/**
+ * Engine-flagged Toyota Tundra TSBs (NHTSA Manufacturer Communications)
+ * with deep links into the NHTSA viewer. These are the pre-recall service
+ * bulletins — evidence Toyota was telling dealers about main-bearing and
+ * short-block work before NHTSA opened 24V381.
+ */
+export async function getEngineMfrComms(): Promise<MfrCommunication[]> {
+  const rows = await query<{
+    nhtsa_id: string;
+    model_years: string;
+    summary: string | null;
+    engine_keyword: number;
+  }>(`
+    SELECT nhtsa_id, model_years, summary, engine_keyword
+      FROM mfr_communications
+     WHERE engine_keyword = 1
+     ORDER BY nhtsa_id DESC
+  `);
+  return rows.map((r) => ({
+    nhtsa_id: r.nhtsa_id,
+    model_years: r.model_years,
+    summary: r.summary,
+    engine_keyword: r.engine_keyword === 1,
+    url: `https://www.nhtsa.gov/odi/tsbs/${r.nhtsa_id}`,
+  }));
+}
+
+export interface MfrCommsTotals {
+  total: number;
+  engine_keyword: number;
+}
+
+export async function getMfrCommsTotals(): Promise<MfrCommsTotals> {
+  const row = await queryOne<MfrCommsTotals>(`
+    SELECT
+      COUNT(*) AS total,
+      SUM(CASE WHEN engine_keyword = 1 THEN 1 ELSE 0 END) AS engine_keyword
+    FROM mfr_communications
+  `);
+  return row ?? { total: 0, engine_keyword: 0 };
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString();
   return query<RecallTimeline>(

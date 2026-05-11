@@ -317,6 +317,27 @@ def ingest_recall_quarterly(
     )
 
 
+@app.command(name="ingest-mfr-comms")
+def ingest_mfr_comms(
+    force: Annotated[bool, typer.Option("--force", help="Re-download even if cached.")] = False,
+) -> None:
+    """Download + ingest NHTSA Manufacturer Communications (TSBs).
+
+    Filtered to Toyota Tundra MY 2022+. Flags engine-keyword bulletins
+    for the /lifespan pre-recall trail.
+    """
+    from tundra.nhtsa.mfr_communications import download_all, ingest
+
+    console.rule("[bold]ingest manufacturer communications (TSBs)[/bold]")
+    paths = download_all(force=force)
+    csv_paths = [p for p in paths if p.suffix.lower() == ".csv"]
+    stats = ingest(csv_paths)
+    console.print(
+        f"  seen={stats['seen']}  upserted={stats['upserted']}  "
+        f"engine-keyword={stats['engine_kw']}",
+    )
+
+
 @app.command(name="ingest-recall-docs")
 def ingest_recall_docs() -> None:
     """Parse + ingest the NHTSA §573 PDFs Toyota filed for our recalls."""

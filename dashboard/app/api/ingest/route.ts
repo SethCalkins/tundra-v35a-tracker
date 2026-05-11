@@ -35,6 +35,7 @@ interface IngestPayload {
   nhtsa_complaints?: Json[];
   recall_quarterly_reports?: Json[];
   recall_documents?: Json[];
+  mfr_communications?: Json[];
 }
 
 function toIntBool(v: unknown): number | null {
@@ -94,6 +95,7 @@ export async function POST(req: Request) {
     nhtsa_complaints: 0,
     recall_quarterly_reports: 0,
     recall_documents: 0,
+    mfr_communications: 0,
   };
 
   try {
@@ -348,6 +350,34 @@ export async function POST(req: Request) {
       );
       await db.batch(stmts);
       counts.recall_documents = stmts.length;
+    }
+
+    // ─ mfr_communications ──────────────────────────────────────
+    if (payload.mfr_communications?.length) {
+      const stmts = payload.mfr_communications.map((m) =>
+        db
+          .prepare(
+            `INSERT INTO mfr_communications
+              (nhtsa_id, make, model, model_years, summary, engine_keyword, ingested_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(nhtsa_id) DO UPDATE SET
+               summary        = excluded.summary,
+               model_years    = excluded.model_years,
+               engine_keyword = excluded.engine_keyword,
+               ingested_at    = excluded.ingested_at`,
+          )
+          .bind(
+            pick(m, "nhtsa_id"),
+            pick(m, "make"),
+            pick(m, "model"),
+            pick(m, "model_years"),
+            pick(m, "summary"),
+            toIntBool(m.engine_keyword),
+            pick(m, "ingested_at"),
+          ),
+      );
+      await db.batch(stmts);
+      counts.mfr_communications = stmts.length;
     }
   } catch (e) {
     console.error("ingest error", e);

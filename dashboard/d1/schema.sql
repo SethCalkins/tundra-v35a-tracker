@@ -225,6 +225,24 @@ CREATE INDEX IF NOT EXISTS ix_recall_docs_recall_date
   ON recall_documents (recall_id, submission_date);
 
 -- ─────────────────────────────────────────────────────────────
+-- mfr_communications — NHTSA TSBs / Manufacturer Communications.
+-- Filtered to Toyota Tundra MY 2022+ at ingest. engine_keyword=1 means
+-- the summary mentions V35A / main bearing / short block / etc.
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS mfr_communications (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  nhtsa_id        TEXT NOT NULL UNIQUE,
+  make            TEXT NOT NULL,
+  model           TEXT NOT NULL,
+  model_years     TEXT NOT NULL,
+  summary         TEXT,
+  engine_keyword  INTEGER NOT NULL DEFAULT 0,
+  ingested_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_mfrcomms_make_model ON mfr_communications (make, model);
+CREATE INDEX IF NOT EXISTS ix_mfrcomms_engine_kw  ON mfr_communications (engine_keyword);
+
+-- ─────────────────────────────────────────────────────────────
 -- seed recalls (24V381 + 25V767 with build windows from 573 reports)
 -- ─────────────────────────────────────────────────────────────
 INSERT OR REPLACE INTO recalls

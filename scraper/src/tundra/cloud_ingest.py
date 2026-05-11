@@ -70,6 +70,10 @@ SOURCES: dict[str, tuple[str, list[str]]] = {
         "recall_id", "doc_type", "filename", "title", "submission_date",
         "source_url", "page_count", "body", "ingested_at",
     ]),
+    "mfr_communications": ("mfr_communications", [
+        "nhtsa_id", "make", "model", "model_years", "summary",
+        "engine_keyword", "ingested_at",
+    ]),
 }
 
 
