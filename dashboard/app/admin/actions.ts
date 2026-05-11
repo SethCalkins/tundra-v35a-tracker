@@ -12,6 +12,9 @@ export async function markVerified(id: number, method: string = "admin"): Promis
     [new Date().toISOString(), method, id],
   );
   revalidatePath("/admin");
+  revalidatePath("/lifespan");
+  revalidatePath("/submit");
+  revalidatePath("/");
 }
 
 export async function markUnverified(id: number): Promise<void> {
@@ -22,9 +25,15 @@ export async function markUnverified(id: number): Promise<void> {
     [id],
   );
   revalidatePath("/admin");
+  revalidatePath("/lifespan");
+  revalidatePath("/submit");
+  revalidatePath("/");
 }
 
 export async function deleteSubmission(id: number): Promise<void> {
   await query(`DELETE FROM user_submissions WHERE id = ?`, [id]);
   revalidatePath("/admin");
+  revalidatePath("/lifespan");
+  revalidatePath("/submit");
+  revalidatePath("/");
 }
