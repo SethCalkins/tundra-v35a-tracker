@@ -116,142 +116,198 @@ export default async function Overview() {
 
       {/* Public appeal */}
       <section className="mb-16">
-        <div className="border-l-[6px] border-[#EB0A1E] bg-zinc-50 p-8 sm:p-10 dark:bg-zinc-900">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#EB0A1E]">
+        <div className="border-l-[6px] border-[#EB0A1E] bg-zinc-50 p-5 sm:p-10 dark:bg-zinc-900">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E] sm:text-xs sm:tracking-[0.25em]">
             An open ask of Toyota Motor North America
           </p>
-          <h2 className="mt-3 text-3xl font-bold tracking-tight italic sm:text-4xl">
-            Extend the V35A engine warranty to 100,000 miles
-            <span className="text-[#EB0A1E]">.</span>
+
+          <h2 className="mt-3 text-3xl font-bold leading-[1.05] tracking-tight italic sm:text-5xl">
+            Extend the V35A engine warranty to{" "}
+            <span className="text-[#EB0A1E]">100,000 miles.</span>
           </h2>
-          <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-700 dark:text-zinc-300">
+          <p className="mt-3 text-base font-semibold tracking-tight text-zinc-700 dark:text-zinc-300 sm:text-xl">
             Both i-FORCE and i-FORCE MAX. Same engine, same defect, same risk.
           </p>
 
-          <p className="mt-6 max-w-3xl text-base leading-7 text-zinc-700 dark:text-zinc-300">
-            Toyota built its reputation on engines that last 200k+ miles. The V35A
-            in 3rd-gen Tundras isn&apos;t living up to that. The recall data and
-            owner complaints are clear — and the current{" "}
-            <strong>5-year / 60,000-mile powertrain warranty</strong>{" "}isn&apos;t
-            enough for owners caught in the gap.
-          </p>
-
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+          {/* Stat strip — 2 cols on mobile, 4 on desktop */}
+          <dl className="mt-7 grid grid-cols-2 gap-x-4 gap-y-5 border-y border-zinc-300 py-6 dark:border-zinc-700 sm:grid-cols-4">
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                What the data shows
-              </h3>
-              <ul className="mt-3 space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    Median V35A failure mileage:{" "}
-                    <span className="font-bold tabular-nums">
-                      {complaintTotals.median_failure_mileage?.toLocaleString() ?? "~34,000"} miles
-                    </span>
-                    . Range from a few thousand miles to{" "}
-                    <span className="font-bold tabular-nums">
-                      {complaintTotals.latest_failure?.toLocaleString() ?? "89,000"} miles
-                    </span>
-                    .
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    <span className="font-bold tabular-nums">
-                      {severity.total_towed}
-                    </span>{" "}
-                    of these failures required the truck to be towed — catastrophic
-                    on-road events.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    Recall <span className="font-mono font-bold">25V767</span>&apos;s
-                    remedy isn&apos;t scheduled until ~Aug 2026 per Toyota&apos;s own
-                    §573 filing. Owners with affected VINs are told their engines
-                    may fail and there is no fix yet.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    Trucks at 65k–80k miles outside both recalls have <em>no</em>{" "}
-                    recourse if their V35A fails. Powertrain warranty has expired,
-                    recall doesn&apos;t cover them.
-                  </span>
-                </li>
-              </ul>
+              <dt className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Median failure
+              </dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums text-[#EB0A1E] sm:text-3xl">
+                {complaintTotals.median_failure_mileage?.toLocaleString() ?? "34,000"}
+                <span className="ml-1 text-xs font-normal text-zinc-500">mi</span>
+              </dd>
             </div>
-
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                Why hybrids must be included
-              </h3>
-              <ul className="mt-3 space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    The <strong>i-FORCE MAX uses the same V35A-FTS block</strong>{" "}as
-                    the non-hybrid i-FORCE. The defect is in the engine&apos;s main
-                    bearings — present regardless of powertrain.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    Recall <span className="font-mono font-bold">25V767</span>{" "}
-                    explicitly includes hybrid Tundras. Toyota has already
-                    acknowledged the engine risk applies equally.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    Toyota&apos;s 10-year / 150,000-mile hybrid warranty covers the
-                    1TM electric drive motor and battery — <strong>not</strong>{" "}the
-                    V35A engine block. Hybrid owners get the same 5/60 powertrain
-                    coverage as everyone else, while paying a premium for the
-                    hybrid system.
-                  </span>
-                </li>
-                <li className="flex gap-3">
-                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
-                  <span>
-                    Excluding hybrids from any extension would leave i-FORCE MAX
-                    owners — who paid more for their truck — with weaker engine
-                    coverage than gas-only buyers. That cannot be the policy.
-                  </span>
-                </li>
-              </ul>
+              <dt className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Trucks towed
+              </dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums text-[#EB0A1E] sm:text-3xl">
+                {severity.total_towed}
+              </dd>
             </div>
-          </div>
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Current warranty
+              </dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums sm:text-3xl">
+                60,000
+                <span className="ml-1 text-xs font-normal text-zinc-500">mi</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                25V767 remedy
+              </dt>
+              <dd className="mt-1 text-2xl font-bold tabular-nums sm:text-3xl">
+                ~Aug
+                <span className="ml-1 text-xs font-normal text-zinc-500">2026</span>
+              </dd>
+            </div>
+          </dl>
 
-          <div className="mt-8 border-2 border-[#EB0A1E] bg-white p-6 dark:bg-zinc-950">
-            <p className="text-sm font-bold uppercase tracking-wider text-[#EB0A1E]">
+          {/* THE ASK — center stage */}
+          <div className="mt-7 border-2 border-[#EB0A1E] bg-white p-5 dark:bg-zinc-950 sm:p-8">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#EB0A1E] sm:text-xs">
               The ask
             </p>
-            <p className="mt-2 text-base font-semibold leading-7 text-zinc-900 dark:text-zinc-100">
-              Extend the V35A engine block warranty to 10 years / 100,000 miles for{" "}
-              <em>every 3rd-gen Tundra and Lexus LX/GX</em>{" "}— i-FORCE and i-FORCE
-              MAX, retroactive to all affected owners regardless of recall scope.
+            <p className="mt-3 text-lg font-bold leading-snug text-zinc-900 dark:text-zinc-100 sm:text-2xl">
+              Extend the V35A engine warranty to{" "}
+              <span className="text-[#EB0A1E]">10 years / 100,000 miles</span>
+              {" "}for every 3rd-gen Tundra and Lexus LX/GX. Both i-FORCE and i-FORCE MAX.
+              Retroactive to all affected owners.
             </p>
             <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-              The cost of an extension is a fraction of the engine swaps Toyota is
-              already performing under recall. The reputational return — restoring
-              the &quot;Toyotas last forever&quot; promise that the brand was built
-              on — is enormous. The right tail of the failure curve runs past 60k
-              miles. Cover it.
+              The cost is a fraction of the engine swaps Toyota is already
+              performing under recall. The reputational return — restoring the
+              &quot;Toyotas last forever&quot; promise — is enormous.
             </p>
           </div>
 
-          <p className="mt-6 text-xs leading-5 text-zinc-500">
-            This is an independent owner&apos;s appeal based on public NHTSA data
-            and third-party inventory analysis. Not affiliated with Toyota or
-            Lexus. If you&apos;re a 3rd-gen Tundra owner and want to add your
-            voice, file a complaint with NHTSA at{" "}
+          {/* CTAs */}
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="https://www.nhtsa.gov/report-a-safety-problem"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center bg-[#EB0A1E] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#c00917]"
+            >
+              File a complaint with NHTSA →
+            </a>
+            <Link
+              href="/submit"
+              className="inline-flex items-center justify-center border-2 border-zinc-900 bg-white px-6 py-3 text-xs font-bold uppercase tracking-wider text-zinc-900 transition-colors hover:bg-zinc-900 hover:text-white dark:border-zinc-100 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-100 dark:hover:text-zinc-900"
+            >
+              Report your engine →
+            </Link>
+          </div>
+
+          {/* Evidence — collapsed by default */}
+          <details className="group mt-8 border-t border-zinc-300 pt-6 dark:border-zinc-700">
+            <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-700 hover:text-[#EB0A1E] dark:text-zinc-300">
+              <span aria-hidden className="text-[#EB0A1E] transition-transform group-open:rotate-90">
+                ▸
+              </span>
+              See the evidence
+            </summary>
+
+            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  What the data shows
+                </h3>
+                <ul className="mt-3 space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      Median V35A failure mileage:{" "}
+                      <span className="font-bold tabular-nums">
+                        {complaintTotals.median_failure_mileage?.toLocaleString() ?? "~34,000"} miles
+                      </span>
+                      . Range up to{" "}
+                      <span className="font-bold tabular-nums">
+                        {complaintTotals.latest_failure?.toLocaleString() ?? "89,000"} miles
+                      </span>
+                      .
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      <span className="font-bold tabular-nums">{severity.total_towed}</span>{" "}
+                      of these failures required the truck to be towed — catastrophic
+                      on-road events.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      Recall <span className="font-mono font-bold">25V767</span>&apos;s
+                      remedy isn&apos;t scheduled until ~Aug 2026 per Toyota&apos;s
+                      §573 filing. Owners are told their engines may fail; there is
+                      no fix yet.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      Trucks at 65k–80k miles outside both recalls have <em>no</em>{" "}
+                      recourse. Powertrain warranty has expired; recall doesn&apos;t
+                      cover them.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Why hybrids must be included
+                </h3>
+                <ul className="mt-3 space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      The <strong>i-FORCE MAX uses the same V35A-FTS block</strong>{" "}
+                      as the non-hybrid. The defect is in the main bearings —
+                      present regardless of powertrain.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      Recall <span className="font-mono font-bold">25V767</span>{" "}
+                      explicitly includes hybrid Tundras. Toyota has already
+                      acknowledged the risk applies equally.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      Toyota&apos;s 10-year / 150,000-mile hybrid warranty covers
+                      the 1TM motor and battery — <strong>not</strong>{" "}the V35A
+                      block. Hybrid owners get the same 5/60 engine coverage as
+                      gas buyers.
+                    </span>
+                  </li>
+                  <li className="flex gap-3">
+                    <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                    <span>
+                      Excluding hybrids would leave i-FORCE MAX owners with weaker
+                      engine coverage than gas-only buyers — even though they paid
+                      a premium. That cannot be the policy.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </details>
+
+          <p className="mt-6 text-[11px] leading-5 text-zinc-500">
+            Independent owner&apos;s appeal based on public NHTSA data and
+            third-party inventory analysis. Not affiliated with Toyota or Lexus.
+            File complaints at{" "}
             <a
               href="https://www.nhtsa.gov/report-a-safety-problem"
               className="font-medium text-[#EB0A1E] underline-offset-2 hover:underline"

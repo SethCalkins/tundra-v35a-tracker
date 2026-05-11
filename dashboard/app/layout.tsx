@@ -101,38 +101,61 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <div className="h-1 w-full bg-[#EB0A1E]" aria-hidden />
 
         <header className="sticky top-1 z-20 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/85 dark:border-zinc-800 dark:bg-zinc-950/95">
-          <div className="mx-auto flex max-w-6xl items-center gap-8 px-6 py-4">
-            <Link href="/" className="group flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#EB0A1E] bg-white text-[#EB0A1E] transition-transform group-hover:scale-105 dark:bg-zinc-950">
-                <span className="text-lg font-bold italic tracking-tighter">T</span>
+          {/* Top row: brand + CTA. Compact on mobile. */}
+          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:gap-8 sm:px-6 sm:py-4">
+            <Link href="/" className="group flex items-center gap-2 sm:gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#EB0A1E] bg-white text-[#EB0A1E] transition-transform group-hover:scale-105 dark:bg-zinc-950 sm:h-10 sm:w-10">
+                <span className="text-base font-bold italic tracking-tighter sm:text-lg">T</span>
               </div>
               <div className="leading-tight">
-                <div className="text-base font-bold tracking-tight">
-                  TUNDRA <span className="text-[#EB0A1E]">V35A</span> TRACKER
+                <div className="text-sm font-bold tracking-tight sm:text-base">
+                  TUNDRA <span className="text-[#EB0A1E]">V35A</span>
+                  <span className="hidden sm:inline"> TRACKER</span>
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">
+                <div className="hidden text-[10px] uppercase tracking-wider text-zinc-500 sm:block">
                   Independent reliability data
                 </div>
               </div>
             </Link>
-            <nav className="ml-auto flex items-center gap-1 text-sm font-medium">
+
+            {/* Desktop nav inline */}
+            <nav className="ml-auto hidden items-center gap-1 text-sm font-medium sm:flex">
               {NAV.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="hidden rounded-sm px-3 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-[#EB0A1E] dark:text-zinc-300 dark:hover:bg-zinc-800 sm:inline-block"
+                  className="rounded-sm px-3 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-[#EB0A1E] dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   {item.label}
                 </Link>
               ))}
-              <Link
-                href={NAV_CTA.href}
-                className="ml-2 inline-flex items-center bg-[#EB0A1E] px-4 py-2 text-xs font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#c00917]"
-              >
-                {NAV_CTA.label}
-              </Link>
             </nav>
+
+            <Link
+              href={NAV_CTA.href}
+              className="ml-auto inline-flex shrink-0 items-center bg-[#EB0A1E] px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-white transition-colors hover:bg-[#c00917] sm:ml-2 sm:px-4 sm:text-xs"
+            >
+              <span className="sm:hidden">Report engine</span>
+              <span className="hidden sm:inline">{NAV_CTA.label}</span>
+            </Link>
           </div>
+
+          {/* Mobile second row: horizontally scrollable nav */}
+          <nav
+            className="flex gap-1 overflow-x-auto border-t border-zinc-200 px-4 py-2 text-xs font-medium dark:border-zinc-800 sm:hidden [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: "none" }}
+            aria-label="Primary"
+          >
+            {NAV.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="shrink-0 rounded-sm px-3 py-1.5 text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-[#EB0A1E] dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
         </header>
 
         <div className="flex-1">{children}</div>
