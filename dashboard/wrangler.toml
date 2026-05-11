@@ -4,10 +4,24 @@ compatibility_date = "2026-05-01"
 compatibility_flags = ["nodejs_compat"]
 account_id = "bdac025d32efec3172f13d5e82f12ff3"
 
+# Keep the workers.dev fallback live so the site stays reachable if the
+# custom-domain DNS ever has issues.
+workers_dev = true
+
 # Cloudflare assets (Next.js static output)
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+# Custom domain — Cloudflare auto-creates DNS records and provisions TLS.
+# Requires the zone (tundrav35a.com) to be in the same account.
+[[routes]]
+pattern = "tundrav35a.com"
+custom_domain = true
+
+[[routes]]
+pattern = "www.tundrav35a.com"
+custom_domain = true
 
 # D1 binding — env.DB in Worker / RSC
 [[d1_databases]]
@@ -21,4 +35,4 @@ database_id = "30fe7fbe-2e8d-46b5-883c-cded3e6085b7"
 #
 # Public env (safe to commit):
 [vars]
-NEXT_PUBLIC_APP_URL = "https://tundra-v35a-tracker.workers.dev"
+NEXT_PUBLIC_APP_URL = "https://tundrav35a.com"

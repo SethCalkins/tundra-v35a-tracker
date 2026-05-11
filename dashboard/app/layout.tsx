@@ -6,15 +6,75 @@ import "./globals.css";
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
+const SITE_URL = "https://tundrav35a.com";
+
 export const metadata: Metadata = {
-  title: "Tundra V35A Tracker — engine reliability & recall analytics",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Tundra V35A Tracker — engine reliability & recall analytics",
+    template: "%s — Tundra V35A Tracker",
+  },
   description:
     "Independent reliability dashboard for the 3rd-gen Toyota Tundra V35A engine recalls (24V381 / 25V767). Real failure data, owner complaints, and third-party inventory analysis.",
+  keywords: [
+    "Toyota Tundra V35A",
+    "V35A engine recall",
+    "24V381",
+    "25V767",
+    "3rd gen Tundra reliability",
+    "Tundra engine failure",
+    "Tundra engine replacement",
+    "i-FORCE MAX recall",
+    "Lexus LX600 V35A",
+  ],
+  alternates: { canonical: "/" },
   openGraph: {
     title: "Tundra V35A Tracker",
-    description: "Reliability & recall analytics for 3rd-gen Toyota Tundras (2022+).",
+    description:
+      "Reliability & recall analytics for 3rd-gen Toyota Tundras (2022+). NHTSA complaints, owner reports, and recall status.",
+    url: SITE_URL,
+    siteName: "Tundra V35A Tracker",
     type: "website",
+    locale: "en_US",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Tundra V35A Tracker",
+    description:
+      "Independent reliability & recall analytics for 3rd-gen Toyota Tundras.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  category: "automotive",
+};
+
+const JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "Tundra V35A Tracker",
+      description:
+        "Independent reliability dashboard for the 3rd-gen Toyota Tundra V35A engine recalls.",
+      inLanguage: "en-US",
+    },
+    {
+      "@type": "Dataset",
+      "@id": `${SITE_URL}/#dataset`,
+      name: "Toyota Tundra V35A engine recall and reliability dataset",
+      description:
+        "Aggregated NHTSA complaint records, recall status snapshots, owner reports, and third-party used-vehicle inventory listings for 2022+ Toyota Tundras with the V35A engine.",
+      keywords: ["Toyota Tundra", "V35A", "24V381", "25V767", "engine recall", "vehicle reliability"],
+      creator: { "@type": "Organization", name: "Tundra V35A Tracker" },
+      isAccessibleForFree: true,
+      url: SITE_URL,
+    },
+  ],
 };
 
 const NAV = [
@@ -33,6 +93,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
+        />
         {/* Red accent strip */}
         <div className="h-1 w-full bg-[#EB0A1E]" aria-hidden />
 
