@@ -299,6 +299,23 @@ def run_all(
     )
 
 
+@app.command(name="sync-cloud")
+def sync_cloud(
+    dry_run: Annotated[bool, typer.Option("--dry-run", help="Count rows without POSTing.")] = False,
+) -> None:
+    """Push the local Postgres state to the Cloudflare D1 dashboard via /api/ingest.
+
+    Requires env vars INGEST_URL and INGEST_SECRET. Used by the GitHub
+    Actions cron workflow after run-all completes.
+    """
+    from tundra.cloud_ingest import sync_from_env
+
+    console.rule("[bold]sync → Cloudflare D1[/bold]")
+    totals = sync_from_env(dry_run=dry_run)
+    grand = sum(totals.values())
+    console.print(f"[green]ok[/green] — {grand} rows {'previewed' if dry_run else 'sent'}")
+
+
 @app.command(name="verify-recalls")
 def verify_recalls(
     headed: Annotated[bool, typer.Option("--headed", help="Show the browser.")] = False,

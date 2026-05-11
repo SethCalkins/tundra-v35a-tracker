@@ -1,10 +1,13 @@
 "use client";
 
+import Script from "next/script";
 import { useActionState, useState } from "react";
 
 import { type SubmitState, submitUserReport } from "./actions";
 
 const initialState: SubmitState = { ok: false };
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 export function SubmissionForm() {
   const [state, formAction, isPending] = useActionState(submitUserReport, initialState);
@@ -227,6 +230,18 @@ export function SubmissionForm() {
           />
         </Field>
       </Section>
+
+      {TURNSTILE_SITE_KEY && (
+        <div className="flex justify-start">
+          <Script
+            src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+            async
+            defer
+            strategy="afterInteractive"
+          />
+          <div className="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} />
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 border-t border-zinc-200 pt-8 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-md text-xs leading-5 text-zinc-500">

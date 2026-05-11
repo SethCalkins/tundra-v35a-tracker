@@ -1,0 +1,69 @@
+name: Daily Carvana scrape → D1
+
+on:
+  schedule:
+    # 13:00 UTC daily ≈ 06:00 PT / 09:00 ET — Carvana inventory has refreshed.
+    - cron: "0 13 * * *"
+  workflow_dispatch: {}  # manual trigger
+
+# Cancel an in-flight scrape if a new one starts.
+concurrency:
+  group: tundra-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Ephemeral Postgres for the scraper's working state. Tossed at job end.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tundra
+          POSTGRES_PASSWORD: tundra
+          POSTGRES_DB: tundra
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tundra -d tundra"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://tundra:tundra@localhost:5432/tundra
+      INGEST_URL:    ${{ secrets.INGEST_URL }}
+      INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install scraper deps
+        working-directory: scraper
+        run: uv sync
+
+      - name: Install Chromium for recall poller
+        working-directory: scraper
+        run: uv run playwright install --with-deps chromium
+
+      - name: Apply Alembic migrations
+        working-directory: scraper
+        run: uv run alembic upgrade head
+
+      - name: Run scrape + decode (skip recall poll on daily)
+        working-directory: scraper
+        run: uv run tundra run-all --skip-poll
+
+      - name: Sync new state to D1
+        working-directory: scraper
+        run: uv run tundra sync-cloud

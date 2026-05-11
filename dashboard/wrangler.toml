@@ -1,0 +1,24 @@
+name = "tundra-v35a-tracker"
+main = ".open-next/worker.js"
+compatibility_date = "2026-05-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "bdac025d32efec3172f13d5e82f12ff3"
+
+# Cloudflare assets (Next.js static output)
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# D1 binding — env.DB in Worker / RSC
+[[d1_databases]]
+binding = "DB"
+database_name = "tundra-v35a-tracker"
+database_id = "30fe7fbe-2e8d-46b5-883c-cded3e6085b7"
+
+# Secrets (set via `wrangler secret put`):
+#   INGEST_SECRET       — bearer token for /api/ingest (scraper auth)
+#   TURNSTILE_SECRET    — server-side Turnstile verification key
+#
+# Public env (safe to commit):
+[vars]
+NEXT_PUBLIC_APP_URL = "https://tundra-v35a-tracker.workers.dev"

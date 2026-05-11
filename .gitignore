@@ -23,6 +23,14 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
+# Cloudflare / OpenNext
+.open-next/
+.wrangler/
+cloudflare-env.d.ts
+
+# One-shot D1 data migration dumps (contain real VINs)
+dashboard/d1/seed/
+
 # Environment
 .env
 .env.local

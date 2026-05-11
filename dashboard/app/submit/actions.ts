@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 import { query } from "@/lib/db";
 
@@ -13,21 +14,30 @@ export interface SubmitState {
   message?: string;
 }
 
+const nowIso = () => new Date().toISOString();
+
 export async function submitUserReport(
   prev: SubmitState | null,
   formData: FormData,
 ): Promise<SubmitState> {
-  // Honeypot — real users won't fill the hidden field
+  // Honeypot — real users won't fill the hidden field.
   const honeypot = String(formData.get("website") ?? "").trim();
   if (honeypot) {
-    // Quietly accept, mark as honeypot-failed; metrics will exclude it.
     await query(
       `INSERT INTO user_submissions
         (submitted_at, vin, engine_replaced, honeypot_failed, ip_address, user_agent)
-       VALUES (NOW(), '00000000000000000', FALSE, TRUE, $1, $2)`,
-      [await getIp(), await getUserAgent()],
+       VALUES (?, '00000000000000000', 0, 1, ?, ?)`,
+      [nowIso(), await getIp(), await getUserAgent()],
     );
     return { ok: true, message: "Thanks for your report." };
+  }
+
+  // Turnstile — server-side verification. Skipped if no secret configured
+  // (so local dev keeps working without a key).
+  const turnstileToken = String(formData.get("cf-turnstile-response") ?? "").trim();
+  const turnstileOk = await verifyTurnstile(turnstileToken, await getIp());
+  if (!turnstileOk) {
+    return { ok: false, error: "Bot check failed. Please reload and try again." };
   }
 
   const vin = String(formData.get("vin") ?? "").trim().toUpperCase();
@@ -56,14 +66,14 @@ export async function submitUserReport(
     const n = parseInt(s.replace(/[^0-9]/g, ""), 10);
     return Number.isFinite(n) ? n : null;
   };
+  // D1/SQLite stores booleans as integers.
+  const toIntBool = (v: boolean | null): number | null => (v === null ? null : v ? 1 : 0);
 
-  const isHybrid = isHybridStr === "yes" ? true : isHybridStr === "no" ? false : null;
+  const isHybrid: boolean | null =
+    isHybridStr === "yes" ? true : isHybridStr === "no" ? false : null;
 
-  // Cross-validation
-  if (engineReplaced) {
-    if (!replacementMileageStr) {
-      return { ok: false, error: "If the engine was replaced, please enter the replacement mileage." };
-    }
+  if (engineReplaced && !replacementMileageStr) {
+    return { ok: false, error: "If the engine was replaced, please enter the replacement mileage." };
   }
   if (submitterEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(submitterEmail)) {
     return { ok: false, error: "Please enter a valid email or leave it blank." };
@@ -77,24 +87,25 @@ export async function submitUserReport(
          dealer_name, dealer_state, under_recall, recall_campaign,
          notes, submitter_email, ip_address, user_agent)
        VALUES
-        (NOW(), $1, $2, $3, $4, $5,
-         $6, $7, $8, $9, $10,
-         $11, $12, $13, $14,
-         $15, $16, $17, $18)`,
+        (?, ?, ?, ?, ?, ?,
+         ?, ?, ?, ?, ?,
+         ?, ?, ?, ?,
+         ?, ?, ?, ?)`,
       [
+        nowIso(),
         vin,
         parseInt2(modelYearStr),
         trim,
-        isHybrid,
+        toIntBool(isHybrid),
         parseInt2(currentMileageStr),
-        engineReplaced,
+        engineReplaced ? 1 : 0,
         replacementDateStr || null,
         parseInt2(replacementMileageStr),
         failureMode,
-        engineReplaced ? wasTowed : null,
+        engineReplaced ? (wasTowed ? 1 : 0) : null,
         dealerName,
         dealerState,
-        engineReplaced ? underRecall : null,
+        engineReplaced ? (underRecall ? 1 : 0) : null,
         engineReplaced ? recallCampaign : null,
         notes,
         submitterEmail,
@@ -112,10 +123,46 @@ export async function submitUserReport(
 
 async function getIp(): Promise<string | null> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0].trim() ?? h.get("x-real-ip") ?? null;
+  return (
+    h.get("cf-connecting-ip") ??
+    h.get("x-forwarded-for")?.split(",")[0].trim() ??
+    h.get("x-real-ip") ??
+    null
+  );
 }
 
 async function getUserAgent(): Promise<string | null> {
   const h = await headers();
   return h.get("user-agent");
+}
+
+async function verifyTurnstile(token: string, remoteip: string | null): Promise<boolean> {
+  // Pull secret from Worker env (set with `wrangler secret put TURNSTILE_SECRET`).
+  // If no secret is configured, skip verification — allows local dev / public-bootstrap.
+  let secret: string | undefined;
+  try {
+    const { env } = getCloudflareContext();
+    secret = (env as unknown as { TURNSTILE_SECRET?: string }).TURNSTILE_SECRET;
+  } catch {
+    return true;
+  }
+  if (!secret) return true;
+  if (!token) return false;
+
+  const body = new URLSearchParams();
+  body.set("secret", secret);
+  body.set("response", token);
+  if (remoteip) body.set("remoteip", remoteip);
+
+  try {
+    const r = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      { method: "POST", body },
+    );
+    const j = (await r.json()) as { success?: boolean };
+    return !!j.success;
+  } catch (e) {
+    console.error("turnstile verify failed", e);
+    return false;
+  }
 }
