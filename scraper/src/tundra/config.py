@@ -37,6 +37,10 @@ class Settings(BaseSettings):
 
     recall_poller_use_toyota_fallback: bool = Field(default=False)
 
+    # Cloudflare D1 sync target — used by `tundra sync-cloud`.
+    ingest_url: str | None = Field(default=None, alias="INGEST_URL")
+    ingest_secret: str | None = Field(default=None, alias="INGEST_SECRET")
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

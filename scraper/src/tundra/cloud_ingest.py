@@ -115,10 +115,16 @@ def sync(url: str, secret: str, *, dry_run: bool = False) -> dict[str, int]:
 
 
 def sync_from_env(*, dry_run: bool = False) -> dict[str, int]:
-    url = os.environ.get("INGEST_URL")
-    secret = os.environ.get("INGEST_SECRET")
+    # Prefer Settings (loads from repo-root .env); fall back to bare os.environ
+    # for the GH Actions case where secrets come through workflow env.
+    from tundra.config import get_settings
+    settings = get_settings()
+    url = settings.ingest_url or os.environ.get("INGEST_URL")
+    secret = settings.ingest_secret or os.environ.get("INGEST_SECRET")
     if not url or not secret:
-        raise RuntimeError("INGEST_URL and INGEST_SECRET env vars are required.")
+        raise RuntimeError(
+            "INGEST_URL and INGEST_SECRET must be set (in .env or process env)."
+        )
     return sync(url, secret, dry_run=dry_run)
 
 

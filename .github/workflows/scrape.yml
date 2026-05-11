@@ -1,10 +1,10 @@
 name: Daily Carvana scrape → D1
 
 on:
-  schedule:
-    # 13:00 UTC daily ≈ 06:00 PT / 09:00 ET — Carvana inventory has refreshed.
-    - cron: "0 13 * * *"
-  workflow_dispatch: {}  # manual trigger
+  # Manual only. The cron trigger is intentionally disabled: Carvana fronts
+  # its inventory through Cloudflare WAF which 403s GitHub Actions runner
+  # IP ranges. The scrape has to run from a residential IP.
+  workflow_dispatch: {}
 
 # Cancel an in-flight scrape if a new one starts.
 concurrency:
