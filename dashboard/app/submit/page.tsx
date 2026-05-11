@@ -14,12 +14,12 @@ export const metadata = {
 async function getSubmissionStats() {
   const [{ total = 0, replaced = 0 } = {}] = await query<{ total: number; replaced: number }>(
     `SELECT
-        COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE engine_replaced) ::int AS replaced
+        COUNT(*)                                                AS total,
+        SUM(CASE WHEN engine_replaced = 1 THEN 1 ELSE 0 END)    AS replaced
       FROM user_submissions
-      WHERE NOT honeypot_failed`,
+     WHERE honeypot_failed = 0`,
   );
-  return { total, replaced };
+  return { total, replaced: replaced ?? 0 };
 }
 
 export default async function SubmitPage() {
