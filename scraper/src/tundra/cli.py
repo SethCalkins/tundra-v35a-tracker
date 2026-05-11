@@ -299,6 +299,24 @@ def run_all(
     )
 
 
+@app.command(name="ingest-recall-quarterly")
+def ingest_recall_quarterly(
+    force: Annotated[bool, typer.Option("--force", help="Re-download even if cached.")] = False,
+) -> None:
+    """Download + ingest NHTSA's quarterly recall-remedy reports (FLAT_RCL_Qrtly_Rpts).
+
+    Filtered to the V35A recalls (24V381 / 25V767). Idempotent.
+    """
+    from tundra.nhtsa.recall_quarterly import download, ingest
+
+    console.rule("[bold]ingest recall quarterly reports[/bold]")
+    txt_path = download(force=force)
+    stats = ingest(txt_path)
+    console.print(
+        f"  seen={stats['seen']}  upserted={stats['upserted']}",
+    )
+
+
 @app.command(name="sync-cloud")
 def sync_cloud(
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Count rows without POSTing.")] = False,

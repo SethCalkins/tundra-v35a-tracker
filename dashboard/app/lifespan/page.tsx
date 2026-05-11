@@ -5,6 +5,7 @@ import { CumulativeFailureChart } from "@/components/cumulative-failure-chart";
 import { FailureMileageChart } from "@/components/failure-mileage-chart";
 import { FailurePhrasesChart } from "@/components/failure-phrases-chart";
 import { PageHeader } from "@/components/page-header";
+import { RecallRemediationChart } from "@/components/recall-remediation-chart";
 import { StateDistributionChart } from "@/components/state-distribution-chart";
 import { StatCard } from "@/components/stat-card";
 import { TowRateChart } from "@/components/tow-rate-chart";
@@ -17,6 +18,7 @@ import {
   getEngineComplaintSamples,
   getFailureMileageHistogram,
   getInventoryWithComplaints,
+  getRecallRemediation,
   getRecentUserReplacements,
   getSeverityTotals,
   getTopFailurePhrases,
@@ -58,6 +60,7 @@ export default async function Lifespan() {
     towRate,
     cohortFailures,
     failureCurve,
+    remediation,
   ] = await Promise.all([
     getFailureMileageHistogram(),
     getComplaintTotals(),
@@ -73,7 +76,19 @@ export default async function Lifespan() {
     getTowRateByMileage(),
     getCohortFailures(),
     getCumulativeFailureCurve(),
+    getRecallRemediation(),
   ]);
+
+  // 24V381 latest snapshot (newest quarter)
+  const latest24 = remediation
+    .filter((r) => r.recall_id === "24V381")
+    .at(-1);
+  const remainingUnremedied24 = latest24
+    ? (latest24.involved ?? 0) -
+      (latest24.total_remedied ?? 0) -
+      (latest24.total_unreachable ?? 0) -
+      (latest24.total_removed ?? 0)
+    : null;
 
   const towPctOfEngine =
     severity.engine_complaints > 0
@@ -91,6 +106,70 @@ export default async function Lifespan() {
         title="At what mileage do V35A engines fail?"
         description="Owner-filed complaints from NHTSA's public database. Each row is a real owner reporting a real problem with a 2022-2024 V35A Toyota Tundra. Complaints capture mileage at the time of failure, the affected component, and a free-text description. NHTSA publishes 11-character VIN prefixes (per DPPA), enough to bucket by year/plant/engine but not identify a specific truck."
       />
+
+      {/* ── Recall remedy progress (NHTSA §573 quarterly filings) ──── */}
+      {remediation.length > 0 && (
+        <section className="mb-12 border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <header className="mb-5 border-b border-zinc-200 pb-3 dark:border-zinc-800">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
+              Recall remedy progress
+            </p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight italic">
+              How many V35A engines have actually been replaced?
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              Per-quarter cumulative remedy counts from Toyota&apos;s own
+              §573 §577.5 filings with NHTSA. This is the ground-truth
+              denominator: of the population in scope for each recall, what
+              percent have actually had the engine assembly replaced.
+            </p>
+          </header>
+
+          {latest24 && (
+            <dl className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <StatCard
+                label="24V381 in scope"
+                value={(latest24.involved ?? 0).toLocaleString()}
+                caption="Toyota's involved population"
+              />
+              <StatCard
+                label="Engines replaced"
+                value={(latest24.total_remedied ?? 0).toLocaleString()}
+                caption={latest24.pct_remedied !== null ? `${latest24.pct_remedied}% of in-scope` : "—"}
+                emphasis="danger"
+              />
+              <StatCard
+                label="Still unremedied"
+                value={remainingUnremedied24?.toLocaleString() ?? "—"}
+                caption={
+                  remainingUnremedied24 !== null && latest24.involved
+                    ? `${Math.round((remainingUnremedied24 / latest24.involved) * 100)}% of in-scope`
+                    : "—"
+                }
+                emphasis="danger"
+              />
+              <StatCard
+                label="As of"
+                value={latest24.quarter}
+                caption={
+                  latest24.submission_date
+                    ? `filed ${latest24.submission_date.slice(0, 10)}`
+                    : "—"
+                }
+              />
+            </dl>
+          )}
+
+          <RecallRemediationChart data={remediation} />
+
+          <p className="mt-4 text-[11px] leading-5 text-zinc-500">
+            Source: NHTSA FLAT_RCL_Qrtly_Rpts (production.static.nhtsa.dot.gov),
+            Toyota Motor Engineering &amp; Manufacturing filings. 25V767 figures
+            appear once Toyota files its first quarterly report for that
+            campaign — remedy isn&apos;t available yet.
+          </p>
+        </section>
+      )}
 
       {/* ── Severity ───────────────────────────────────────────────── */}
       <section className="mb-12">

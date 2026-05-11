@@ -181,6 +181,31 @@ CREATE INDEX IF NOT EXISTS ix_user_subs_verified  ON user_submissions (verified)
 CREATE INDEX IF NOT EXISTS ix_user_subs_submitted ON user_submissions (submitted_at);
 
 -- ─────────────────────────────────────────────────────────────
+-- recall_quarterly_reports — NHTSA FLAT_RCL_Qrtly_Rpts ingest.
+-- One row per (recall_id, quarter). Tracks cumulative remedy progress.
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS recall_quarterly_reports (
+  id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+  recall_id            TEXT NOT NULL,
+  mfr_name             TEXT,
+  mfr_campaign         TEXT,
+  subject              TEXT,
+  owner_notify_start   TEXT,
+  owner_notify_end     TEXT,
+  report_no            INTEGER,
+  quarter              TEXT NOT NULL,
+  involved             INTEGER,
+  total_remedied       INTEGER,
+  total_unreachable    INTEGER,
+  total_removed        INTEGER,
+  submission_date      TEXT,
+  ingested_at          TEXT NOT NULL,
+  UNIQUE (recall_id, quarter)
+);
+CREATE INDEX IF NOT EXISTS ix_recall_qtrly_recall_quarter
+  ON recall_quarterly_reports (recall_id, quarter);
+
+-- ─────────────────────────────────────────────────────────────
 -- seed recalls (24V381 + 25V767 with build windows from 573 reports)
 -- ─────────────────────────────────────────────────────────────
 INSERT OR REPLACE INTO recalls

@@ -58,6 +58,13 @@ SOURCES: dict[str, tuple[str, list[str]]] = {
         "num_deaths", "component", "description", "city", "state",
         "complaint_type", "source", "ingested_at",
     ]),
+    "recall_quarterly_reports": ("recall_quarterly_reports", [
+        "recall_id", "mfr_name", "mfr_campaign", "subject",
+        "owner_notify_start", "owner_notify_end",
+        "report_no", "quarter",
+        "involved", "total_remedied", "total_unreachable", "total_removed",
+        "submission_date", "ingested_at",
+    ]),
 }
 
 

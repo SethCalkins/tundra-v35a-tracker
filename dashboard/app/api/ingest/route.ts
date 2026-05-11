@@ -33,6 +33,7 @@ interface IngestPayload {
   recall_status_events?: Json[];
   carfax_observations?: Json[];
   nhtsa_complaints?: Json[];
+  recall_quarterly_reports?: Json[];
 }
 
 function toIntBool(v: unknown): number | null {
@@ -90,6 +91,7 @@ export async function POST(req: Request) {
     recall_status_events: 0,
     carfax_observations: 0,
     nhtsa_complaints: 0,
+    recall_quarterly_reports: 0,
   };
 
   try {
@@ -272,6 +274,46 @@ export async function POST(req: Request) {
       );
       await db.batch(stmts);
       counts.nhtsa_complaints = stmts.length;
+    }
+
+    // ─ recall_quarterly_reports ─────────────────────────────────
+    if (payload.recall_quarterly_reports?.length) {
+      const stmts = payload.recall_quarterly_reports.map((q) =>
+        db
+          .prepare(
+            `INSERT INTO recall_quarterly_reports
+              (recall_id, mfr_name, mfr_campaign, subject,
+               owner_notify_start, owner_notify_end,
+               report_no, quarter,
+               involved, total_remedied, total_unreachable, total_removed,
+               submission_date, ingested_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(recall_id, quarter) DO UPDATE SET
+               total_remedied    = excluded.total_remedied,
+               total_unreachable = excluded.total_unreachable,
+               total_removed     = excluded.total_removed,
+               submission_date   = excluded.submission_date,
+               ingested_at       = excluded.ingested_at`,
+          )
+          .bind(
+            pick(q, "recall_id"),
+            pick(q, "mfr_name"),
+            pick(q, "mfr_campaign"),
+            pick(q, "subject"),
+            pick(q, "owner_notify_start"),
+            pick(q, "owner_notify_end"),
+            pick(q, "report_no"),
+            pick(q, "quarter"),
+            pick(q, "involved"),
+            pick(q, "total_remedied"),
+            pick(q, "total_unreachable"),
+            pick(q, "total_removed"),
+            pick(q, "submission_date"),
+            pick(q, "ingested_at"),
+          ),
+      );
+      await db.batch(stmts);
+      counts.recall_quarterly_reports = stmts.length;
     }
   } catch (e) {
     console.error("ingest error", e);

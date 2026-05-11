@@ -1179,6 +1179,54 @@ export async function getUserReplacementMileageHistogram(): Promise<UserMileageB
   `);
 }
 
+// ── Recall remediation progress (NHTSA quarterly §573 filings) ──────────
+
+export interface RecallRemediationRow {
+  recall_id: string;
+  quarter: string;
+  involved: number | null;
+  total_remedied: number | null;
+  total_unreachable: number | null;
+  total_removed: number | null;
+  submission_date: string | null;
+  pct_remedied: number | null;
+  pct_remaining: number | null;
+}
+
+/**
+ * Cumulative remediation per recall per quarter, sourced from NHTSA's
+ * FLAT_RCL_Qrtly_Rpts feed of Toyota's §573 §577.5 quarterly filings.
+ * Ground-truth answer to "how many V35A engines have actually been swapped."
+ */
+export async function getRecallRemediation(): Promise<RecallRemediationRow[]> {
+  const rows = await query<{
+    recall_id: string;
+    quarter: string;
+    involved: number | null;
+    total_remedied: number | null;
+    total_unreachable: number | null;
+    total_removed: number | null;
+    submission_date: string | null;
+  }>(`
+    SELECT recall_id, quarter, involved, total_remedied,
+           total_unreachable, total_removed, submission_date
+      FROM recall_quarterly_reports
+     ORDER BY recall_id, quarter
+  `);
+  return rows.map((r) => {
+    const denom = r.involved ?? 0;
+    const remedied = r.total_remedied ?? 0;
+    const removed = r.total_removed ?? 0;
+    const unreachable = r.total_unreachable ?? 0;
+    const pct_remedied = denom > 0 ? Math.round((remedied / denom) * 1000) / 10 : null;
+    const pct_remaining =
+      denom > 0
+        ? Math.round(((denom - remedied - removed - unreachable) / denom) * 1000) / 10
+        : null;
+    return { ...r, pct_remedied, pct_remaining };
+  });
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString();
   return query<RecallTimeline>(
