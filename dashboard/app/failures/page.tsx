@@ -185,7 +185,7 @@ export default async function Failures() {
             </div>
             <div>
               <dt className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                Cohort polled
+                Trucks checked
               </dt>
               <dd className="mt-1 text-3xl font-bold tabular-nums">{cohort24.length}</dd>
             </div>
@@ -220,7 +220,7 @@ export default async function Failures() {
             </div>
             <div>
               <dt className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                Cohort polled
+                Trucks checked
               </dt>
               <dd className="mt-1 text-3xl font-bold tabular-nums">{cohort25.length}</dd>
             </div>
@@ -240,13 +240,13 @@ export default async function Failures() {
       <section className="mb-12 border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <header className="mb-5 border-b border-zinc-200 pb-3 dark:border-zinc-800">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
-            Cohort breakdown
+            Breakdown by year &amp; engine
           </p>
           <h2 className="mt-2 text-xl font-bold tracking-tight italic">
             Recall states by year &amp; powertrain.
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Each bar is one model-year × powertrain slice of the V35A 2022–2024 cohort.
+            Each bar is one model-year × engine-type slice of the 2022–2024 V35A trucks we&apos;ve checked.
             Red = engine recall currently open. Light red = in scope but Toyota&apos;s remedy
             isn&apos;t available yet. Gray = not currently flagged (out of scope OR completed).
           </p>
@@ -261,7 +261,7 @@ export default async function Failures() {
             Tabular view
           </p>
           <h2 className="mt-2 text-xl font-bold tracking-tight italic">
-            Cohort × powertrain.
+            By year &amp; engine type.
           </h2>
         </header>
         <table className="w-full text-sm">

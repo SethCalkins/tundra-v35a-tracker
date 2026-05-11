@@ -107,7 +107,7 @@ export default async function Overview() {
             caption="catastrophic engine failures"
           />
           <StatCard
-            label="V35A recall cohort"
+            label="V35A trucks tracked"
             value={counts.recall_eligible}
             caption="Carvana 2022-2024 V35A inventory"
           />
@@ -300,7 +300,7 @@ export default async function Overview() {
       {/* Cohort table */}
       <section>
         <h2 className="mb-6 border-b border-zinc-200 pb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:border-zinc-800">
-          Cohort snapshot
+          Snapshot by year &amp; engine
         </h2>
         <div className="overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-sm">

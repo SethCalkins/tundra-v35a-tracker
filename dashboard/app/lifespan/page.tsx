@@ -384,16 +384,15 @@ export default async function Lifespan() {
       <section className="mb-12 overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <header className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
-            Cohort impact
+            Impact by year
           </p>
           <h2 className="mt-2 text-xl font-bold tracking-tight italic">
             How does each model year stack up?
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Per-cohort comparison of trucks we&rsquo;ve seen on Carvana versus engine
+            Year-by-year comparison of trucks we&rsquo;ve seen on Carvana versus engine
             complaints filed with NHTSA. NHTSA only publishes 11-char VIN prefixes, so
-            complaints are aggregated to the model-year cohort, not matched to specific
-            VINs.
+            complaints are grouped by model year, not matched to specific VINs.
           </p>
         </header>
         <table className="w-full text-sm">
@@ -425,7 +424,7 @@ export default async function Lifespan() {
             {cohortFailures.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-zinc-500">
-                  No cohort data yet.
+                  No data yet.
                 </td>
               </tr>
             )}
@@ -487,10 +486,10 @@ export default async function Lifespan() {
         <section className="mb-12 overflow-hidden border-l-4 border-[#EB0A1E] bg-zinc-50 dark:bg-zinc-900/40">
           <header className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
-              Cohort match
+              Same year &amp; engine match
             </p>
             <h2 className="mt-2 text-xl font-bold tracking-tight italic">
-              Carvana trucks in noisy cohorts.
+              Carvana trucks from problem years.
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
               Carvana inventory whose 11-char VIN prefix matches at least one NHTSA
@@ -508,8 +507,8 @@ export default async function Lifespan() {
                   <th className="px-4 py-2 text-left">Year</th>
                   <th className="px-4 py-2 text-left">Powertrain</th>
                   <th className="px-4 py-2 text-left">Trim</th>
-                  <th className="px-4 py-2 text-right">Engine complaints (cohort)</th>
-                  <th className="px-4 py-2 text-right">Total complaints (cohort)</th>
+                  <th className="px-4 py-2 text-right">Engine complaints (same year &amp; engine)</th>
+                  <th className="px-4 py-2 text-right">Total complaints (same year &amp; engine)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
@@ -559,7 +558,7 @@ export default async function Lifespan() {
             above adds direct owner accounts of replacements with mileage attached.
           </li>
           <li>
-            The cohort-match table pairs Carvana VINs to complaint cohorts that share the
+            The match table pairs Carvana VINs to complaint groups that share the
             same 11-char prefix. A high count there doesn&rsquo;t mean{" "}
             <em>that specific truck</em>{" "}has had problems; it means trucks of{" "}
             <em>that exact configuration</em>{" "}have had problems reported.
