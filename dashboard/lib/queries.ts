@@ -1301,6 +1301,59 @@ export async function getRecallDocuments(): Promise<RecallDocumentRow[]> {
   }));
 }
 
+// ── Engine replacement inference (deductive from Carfax + year scope) ───
+
+export interface EngineReplacementInference {
+  // 2022-2023 V35A = ALL in scope for 24V381. "Recall not listed" in Carfax
+  // means the recall was completed → engine almost certainly replaced.
+  in_scope_22_23: number;
+  likely_replaced_22_23: number;
+  still_open_22_23: number;
+  no_carfax_22_23: number;
+  // 2024 V35A = all in scope for 25V767, remedy not out yet → no replacements
+  in_scope_24: number;
+  pending_24: number;
+  // Pulled-forward percentage
+  pct_likely_replaced_22_23: number;
+}
+
+export async function getEngineReplacementInference(): Promise<EngineReplacementInference> {
+  const row = await queryOne<{
+    in_scope_22_23: number;
+    likely_replaced_22_23: number;
+    still_open_22_23: number;
+    no_carfax_22_23: number;
+    in_scope_24: number;
+    pending_24: number;
+  }>(`
+    WITH lc AS (
+      SELECT vin, engine_recall_listed,
+             ROW_NUMBER() OVER (PARTITION BY vin ORDER BY observed_at DESC) AS rn
+        FROM carfax_observations
+    ),
+    latest AS (SELECT vin, engine_recall_listed FROM lc WHERE rn = 1)
+    SELECT
+      SUM(CASE WHEN v.model_year BETWEEN 2022 AND 2023 THEN 1 ELSE 0 END)                                    AS in_scope_22_23,
+      SUM(CASE WHEN v.model_year BETWEEN 2022 AND 2023 AND latest.engine_recall_listed = 0 THEN 1 ELSE 0 END) AS likely_replaced_22_23,
+      SUM(CASE WHEN v.model_year BETWEEN 2022 AND 2023 AND latest.engine_recall_listed = 1 THEN 1 ELSE 0 END) AS still_open_22_23,
+      SUM(CASE WHEN v.model_year BETWEEN 2022 AND 2023 AND latest.vin IS NULL THEN 1 ELSE 0 END)              AS no_carfax_22_23,
+      SUM(CASE WHEN v.model_year = 2024 THEN 1 ELSE 0 END)                                                    AS in_scope_24,
+      SUM(CASE WHEN v.model_year = 2024 AND latest.engine_recall_listed = 1 THEN 1 ELSE 0 END)                AS pending_24
+      FROM vehicles v
+      LEFT JOIN latest ON latest.vin = v.vin
+     WHERE v.engine_code LIKE '%V35A%'
+  `);
+  const r = row ?? {
+    in_scope_22_23: 0, likely_replaced_22_23: 0, still_open_22_23: 0,
+    no_carfax_22_23: 0, in_scope_24: 0, pending_24: 0,
+  };
+  const denom = r.in_scope_22_23 - r.no_carfax_22_23;
+  return {
+    ...r,
+    pct_likely_replaced_22_23: denom > 0 ? Math.round((r.likely_replaced_22_23 / denom) * 100) : 0,
+  };
+}
+
 // ── NHTSA Manufacturer Communications (TSBs) ─────────────────────────────
 
 export interface MfrCommunication {
