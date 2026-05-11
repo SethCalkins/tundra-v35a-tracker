@@ -779,7 +779,7 @@ export interface FailurePhrase {
 export async function getTopFailurePhrases(): Promise<FailurePhrase[]> {
   const phrases = [
     "stall", "main bearing", "engine replac", "knocking", "loss of power",
-    "towed", "no start", "check engine", "loss of motive", "dealer",
+    "towed", "no start", "check engine", "loss of motive",
     "warranty", "hesitation", "vibration", "pull over when safe",
     "metal shaving", "oil pressure", "rough idle",
   ];
