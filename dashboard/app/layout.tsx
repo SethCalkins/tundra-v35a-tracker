@@ -86,15 +86,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             </p>
             <p>
               Data sourced from public NHTSA recall and complaints databases, Carvana
-              public listings, and the Carvana-Carfax free preview. Methodology and
-              source code on{" "}
-              <a
-                href="https://github.com/sethcalkins/tundra-tracker"
-                className="font-medium text-[#EB0A1E] underline-offset-2 hover:underline"
-              >
-                GitHub
-              </a>
-              .
+              public listings, and the Carvana-Carfax free preview.
             </p>
             <p>
               This site is research only — not legal, financial, or mechanical advice.

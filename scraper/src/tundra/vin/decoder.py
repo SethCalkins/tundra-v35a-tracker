@@ -122,7 +122,7 @@ async def decode_many(vins: list[str], *, concurrency: int = 2, delay_seconds: f
     inter-request delay smooths bursts further.
     """
     sem = asyncio.Semaphore(concurrency)
-    async with httpx.AsyncClient(timeout=20, headers={"user-agent": "tundra-tracker/0.1 (+https://github.com/sethcalkins/tundra-tracker)"}) as client:
+    async with httpx.AsyncClient(timeout=20, headers={"user-agent": "tundra-v35a-tracker/0.1"}) as client:
 
         async def _one(v: str) -> VinDecode:
             async with sem:

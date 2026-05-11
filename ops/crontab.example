@@ -6,17 +6,19 @@
 # INGEST_SECRET) come from the repo-root .env via Settings — no need to
 # duplicate them in the crontab.
 
-PATH=/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:/Users/sethcalkins/.local/bin
+# Set $REPO to the absolute path of your local clone before installing.
+REPO=/path/to/tundra-v35a-tracker
+PATH=/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin:$HOME/.local/bin
 
 # Daily scrape + decode at 06:00, then push to Cloudflare.
 # --skip-poll because recall completion lags by weeks; polling daily wastes
 # Toyota's API quota.
-0 6 * * * cd /Users/sethcalkins/github/carvana/scraper && uv run tundra run-all --skip-poll >> /tmp/tundra-run.log 2>&1 && uv run tundra sync-cloud >> /tmp/tundra-run.log 2>&1
+0 6 * * * cd $REPO/scraper && uv run tundra run-all --skip-poll >> /tmp/tundra-run.log 2>&1 && uv run tundra sync-cloud >> /tmp/tundra-run.log 2>&1
 
 # Weekly full run including recall poll (Mondays 06:30), then push.
-30 6 * * 1 cd /Users/sethcalkins/github/carvana/scraper && uv run tundra run-all >> /tmp/tundra-weekly.log 2>&1 && uv run tundra sync-cloud >> /tmp/tundra-weekly.log 2>&1
+30 6 * * 1 cd $REPO/scraper && uv run tundra run-all >> /tmp/tundra-weekly.log 2>&1 && uv run tundra sync-cloud >> /tmp/tundra-weekly.log 2>&1
 
 # Optional: per-step cron lines if you want different cadences per stage.
-# 0 6 * * *    cd /Users/sethcalkins/github/carvana/scraper && uv run tundra scrape >> /tmp/tundra-scrape.log 2>&1
-# 15 */12 * * * cd /Users/sethcalkins/github/carvana/scraper && uv run tundra decode-vins >> /tmp/tundra-decode.log 2>&1
-# 30 6 * * 1   cd /Users/sethcalkins/github/carvana/scraper && uv run tundra poll-recalls >> /tmp/tundra-recalls.log 2>&1
+# 0 6 * * *    cd $REPO/scraper && uv run tundra scrape >> /tmp/tundra-scrape.log 2>&1
+# 15 */12 * * * cd $REPO/scraper && uv run tundra decode-vins >> /tmp/tundra-decode.log 2>&1
+# 30 6 * * 1   cd $REPO/scraper && uv run tundra poll-recalls >> /tmp/tundra-recalls.log 2>&1
