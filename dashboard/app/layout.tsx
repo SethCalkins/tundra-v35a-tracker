@@ -9,7 +9,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: "Tundra V35A Tracker — engine reliability & recall analytics",
   description:
-    "Independent reliability dashboard for the 3rd-gen Toyota Tundra V35A engine recalls (24V381 / 25V767). Real failure data, owner complaints, and Carvana inventory analysis.",
+    "Independent reliability dashboard for the 3rd-gen Toyota Tundra V35A engine recalls (24V381 / 25V767). Real failure data, owner complaints, and third-party inventory analysis.",
   openGraph: {
     title: "Tundra V35A Tracker",
     description: "Reliability & recall analytics for 3rd-gen Toyota Tundras (2022+).",
@@ -81,12 +81,13 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
             <p>
               Independent owner-research project. <strong>Not affiliated with, endorsed by,
               or sponsored by</strong> Toyota Motor Corporation, Toyota Motor North
-              America, Lexus, or Carvana. The Toyota and Lexus names, logos, and
-              trademarks are the property of their respective owners.
+              America, or Lexus. The Toyota and Lexus names, logos, and trademarks
+              are the property of their respective owners.
             </p>
             <p>
-              Data sourced from public NHTSA recall and complaints databases, Carvana
-              public listings, and the Carvana-Carfax free preview.
+              Data sourced from public NHTSA recall and complaints databases,
+              third-party used-vehicle inventory listings, and the publicly-accessible
+              Carfax free preview.
             </p>
             <p>
               This site is research only — not legal, financial, or mechanical advice.

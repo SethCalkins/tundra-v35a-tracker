@@ -12,7 +12,7 @@ export default async function Vins() {
       <PageHeader
         eyebrow="VIN Explorer"
         title="Inventory."
-        description="Every Carvana Tundra we've seen, with the latest mileage / price observation and current Toyota recall status. 3rd-gen V35A trucks are shown by default. Filters and sorts apply client-side."
+        description="Every 3rd-gen Tundra we've seen in inventory feeds, with the latest mileage / price observation and current Toyota recall status. 3rd-gen V35A trucks are shown by default. Filters and sorts apply client-side."
       />
 
       <div className="mb-6 border-l-4 border-[#EB0A1E] bg-zinc-50 p-4 text-xs leading-5 text-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">

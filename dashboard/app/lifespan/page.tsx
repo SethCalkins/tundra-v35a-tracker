@@ -390,7 +390,7 @@ export default async function Lifespan() {
             How does each model year stack up?
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-            Year-by-year comparison of trucks we&rsquo;ve seen on Carvana versus engine
+            Year-by-year comparison of trucks we&rsquo;ve seen in inventory versus engine
             complaints filed with NHTSA. NHTSA only publishes 11-char VIN prefixes, so
             complaints are grouped by model year, not matched to specific VINs.
           </p>
@@ -400,7 +400,7 @@ export default async function Lifespan() {
             <tr>
               <th className="px-4 py-2 text-left">Year</th>
               <th className="px-4 py-2 text-left">Powertrain</th>
-              <th className="px-4 py-2 text-right">Carvana inventory</th>
+              <th className="px-4 py-2 text-right">Inventory tracked</th>
               <th className="px-4 py-2 text-right">Engine complaints</th>
               <th className="px-4 py-2 text-right">Towed cases</th>
             </tr>
@@ -489,10 +489,10 @@ export default async function Lifespan() {
               Same year &amp; engine match
             </p>
             <h2 className="mt-2 text-xl font-bold tracking-tight italic">
-              Carvana trucks from problem years.
+              Inventory trucks from problem years.
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-              Carvana inventory whose 11-char VIN prefix matches at least one NHTSA
+              Inventory whose 11-char VIN prefix matches at least one NHTSA
               complaint. NHTSA only publishes the 11-char prefix, so this isn&rsquo;t a
               same-truck match — it means &ldquo;same year × plant × engine config has had
               complaints filed.&rdquo;
@@ -558,7 +558,7 @@ export default async function Lifespan() {
             above adds direct owner accounts of replacements with mileage attached.
           </li>
           <li>
-            The match table pairs Carvana VINs to complaint groups that share the
+            The match table pairs inventory VINs to complaint groups that share the
             same 11-char prefix. A high count there doesn&rsquo;t mean{" "}
             <em>that specific truck</em>{" "}has had problems; it means trucks of{" "}
             <em>that exact configuration</em>{" "}have had problems reported.

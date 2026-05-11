@@ -169,7 +169,7 @@ const columns: ColumnDef<VehicleWithListing>[] = [
   },
   {
     id: "listing_url",
-    header: "Carvana",
+    header: "Listing",
     accessorKey: "listing_url",
     enableSorting: false,
     cell: ({ getValue }) => {

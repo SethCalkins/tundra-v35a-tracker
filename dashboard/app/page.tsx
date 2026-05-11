@@ -47,7 +47,7 @@ export default async function Overview() {
           recalls (
           <span className="font-mono font-semibold">24V381</span> and{" "}
           <span className="font-mono font-semibold">25V767</span>
-          ). NHTSA complaint data, Carvana inventory analysis, and Toyota recall
+          ). NHTSA complaint data, third-party inventory analysis, and Toyota recall
           status — surfaced honestly, with no marketing department in the loop.
         </p>
         <div className="mt-10 flex flex-wrap gap-3">
@@ -109,7 +109,7 @@ export default async function Overview() {
           <StatCard
             label="V35A trucks tracked"
             value={counts.recall_eligible}
-            caption="Carvana 2022-2024 V35A inventory"
+            caption="2022-2024 V35A inventory tracked"
           />
         </dl>
       </section>
@@ -249,8 +249,8 @@ export default async function Overview() {
 
           <p className="mt-6 text-xs leading-5 text-zinc-500">
             This is an independent owner&apos;s appeal based on public NHTSA data
-            and Carvana inventory analysis. Not affiliated with Toyota, Lexus, or
-            Carvana. If you&apos;re a 3rd-gen Tundra owner and want to add your
+            and third-party inventory analysis. Not affiliated with Toyota or
+            Lexus. If you&apos;re a 3rd-gen Tundra owner and want to add your
             voice, file a complaint with NHTSA at{" "}
             <a
               href="https://www.nhtsa.gov/report-a-safety-problem"

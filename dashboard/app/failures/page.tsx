@@ -129,7 +129,7 @@ export default async function Failures() {
       <PageHeader
         eyebrow="Engine recall analysis"
         title="V35A recall status."
-        description="For every V35A truck on Carvana we polled Toyota's recall page and pulled Carfax's free preview. Toyota only licenses open-recall data to Carfax, so completed recalls disappear from both sources rather than showing up as 'completed.' That puts a ceiling on what public data can tell us — which we lay out honestly below."
+        description="For every V35A truck in our third-party inventory feed we polled Toyota's recall page and pulled Carfax's free preview. Toyota only licenses open-recall data to Carfax, so completed recalls disappear from both sources rather than showing up as 'completed.' That puts a ceiling on what public data can tell us — which we lay out honestly below."
       />
 
       {/* Top-level state breakdown */}
