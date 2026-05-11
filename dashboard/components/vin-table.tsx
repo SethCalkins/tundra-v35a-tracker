@@ -22,12 +22,12 @@ function HybridBadge({ value }: { value: boolean | null }) {
   if (value === null) return <span className="text-zinc-400">?</span>;
   if (value) {
     return (
-      <span className="border border-zinc-900 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900">
+      <span className="whitespace-nowrap border border-zinc-900 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900">
         i-FORCE MAX
       </span>
     );
   }
-  return <span className="text-xs text-zinc-500">i-FORCE</span>;
+  return <span className="whitespace-nowrap text-xs text-zinc-500">i-FORCE</span>;
 }
 
 function StatusBadge({ value }: { value: string | null }) {
@@ -180,7 +180,7 @@ const columns: ColumnDef<VehicleWithListing>[] = [
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs font-medium text-[#EB0A1E] hover:underline"
+          className="whitespace-nowrap text-xs font-medium text-[#EB0A1E] hover:underline"
         >
           view ↗
         </a>
@@ -315,16 +315,19 @@ export function VinTable({ data }: VinTableProps) {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table — horizontally scrollable on mobile so cells keep their natural width */}
       <div className="overflow-x-auto border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <table className="w-full text-sm">
+        <p className="px-3 py-1.5 text-[10px] uppercase tracking-wider text-zinc-400 sm:hidden">
+          Scroll table sideways →
+        </p>
+        <table className="min-w-[900px] text-sm sm:w-full sm:min-w-0">
           <thead className="border-b-2 border-zinc-200 bg-zinc-50 text-[10px] uppercase tracking-wider text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
-                    className={`px-3 py-3 ${h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#EB0A1E]" : ""}`}
+                    className={`whitespace-nowrap px-3 py-3 ${h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#EB0A1E]" : ""}`}
                     onClick={h.column.getToggleSortingHandler()}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -340,7 +343,7 @@ export function VinTable({ data }: VinTableProps) {
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2.5 align-top">
+                  <td key={cell.id} className="whitespace-nowrap px-3 py-2.5 align-top">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
