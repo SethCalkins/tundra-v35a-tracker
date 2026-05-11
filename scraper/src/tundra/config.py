@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+psycopg://tundra:tundra@localhost:5433/tundra",
+        default="postgresql+psycopg://tundra:tundra@localhost:5434/tundra",
         alias="DATABASE_URL",
     )
 

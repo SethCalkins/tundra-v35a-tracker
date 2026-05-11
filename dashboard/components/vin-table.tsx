@@ -22,32 +22,32 @@ function HybridBadge({ value }: { value: boolean | null }) {
   if (value === null) return <span className="text-zinc-400">?</span>;
   if (value) {
     return (
-      <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+      <span className="border border-zinc-900 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900">
         i-FORCE MAX
       </span>
     );
   }
-  return <span className="text-xs text-zinc-500">non-hybrid</span>;
+  return <span className="text-xs text-zinc-500">i-FORCE</span>;
 }
 
 function StatusBadge({ value }: { value: string | null }) {
   if (value === null) return <span className="text-zinc-400">—</span>;
   if (value === "open") {
     return (
-      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+      <span className="bg-[#EB0A1E] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
         OPEN
       </span>
     );
   }
   if (value === "not_listed") {
     return (
-      <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+      <span className="border border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
         not listed
       </span>
     );
   }
   return (
-    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+    <span className="border border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
       {value}
     </span>
   );
@@ -92,7 +92,7 @@ const columns: ColumnDef<VehicleWithListing>[] = [
       const info = decodeEngine(raw);
       const cls =
         info.generation === "3rd"
-          ? "text-amber-700 dark:text-amber-400"
+          ? "text-[#EB0A1E] font-medium"
           : info.generation === "2nd"
           ? "text-zinc-700 dark:text-zinc-300"
           : "text-zinc-500";
@@ -180,7 +180,7 @@ const columns: ColumnDef<VehicleWithListing>[] = [
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-blue-600 hover:underline dark:text-blue-400"
+          className="text-xs font-medium text-[#EB0A1E] hover:underline"
         >
           view ↗
         </a>
@@ -242,16 +242,18 @@ export function VinTable({ data }: VinTableProps) {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs font-medium text-zinc-500">VIN search</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              VIN search
+            </label>
             <input
               type="text"
               value={vinFilter}
               onChange={(e) => setVinFilter(e.target.value)}
               placeholder="e.g. 5TFPC..."
-              className="mt-1 w-full rounded border border-zinc-300 bg-white px-2 py-1 text-sm font-mono dark:border-zinc-700 dark:bg-zinc-800"
+              className="mt-1 w-full border border-zinc-300 bg-white px-2 py-1.5 font-mono text-sm focus:border-[#EB0A1E] focus:outline-none focus:ring-1 focus:ring-[#EB0A1E] dark:border-zinc-700 dark:bg-zinc-800"
             />
           </div>
           <SelectFilter
@@ -314,15 +316,15 @@ export function VinTable({ data }: VinTableProps) {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="overflow-x-auto border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <table className="w-full text-sm">
-          <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500 dark:bg-zinc-800/50">
+          <thead className="border-b-2 border-zinc-200 bg-zinc-50 text-[10px] uppercase tracking-wider text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
                   <th
                     key={h.id}
-                    className={`px-3 py-2 ${h.column.getCanSort() ? "cursor-pointer select-none" : ""}`}
+                    className={`px-3 py-3 ${h.column.getCanSort() ? "cursor-pointer select-none hover:text-[#EB0A1E]" : ""}`}
                     onClick={h.column.getToggleSortingHandler()}
                   >
                     <span className="inline-flex items-center gap-1">
@@ -338,7 +340,7 @@ export function VinTable({ data }: VinTableProps) {
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2 align-top">
+                  <td key={cell.id} className="px-3 py-2.5 align-top">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -366,14 +368,14 @@ export function VinTable({ data }: VinTableProps) {
           <button
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
-            className="rounded border border-zinc-300 px-2 py-1 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="border border-zinc-300 px-3 py-1.5 font-medium text-zinc-700 transition-colors hover:border-[#EB0A1E] hover:text-[#EB0A1E] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-300 disabled:hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
           >
             ← Prev
           </button>
           <button
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
-            className="rounded border border-zinc-300 px-2 py-1 text-zinc-700 hover:bg-zinc-50 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="border border-zinc-300 px-3 py-1.5 font-medium text-zinc-700 transition-colors hover:border-[#EB0A1E] hover:text-[#EB0A1E] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-zinc-300 disabled:hover:text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
           >
             Next →
           </button>
@@ -393,11 +395,13 @@ interface SelectFilterProps {
 function SelectFilter({ label, value, onChange, options }: SelectFilterProps) {
   return (
     <div>
-      <label className="block text-xs font-medium text-zinc-500">{label}</label>
+      <label className="block text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        {label}
+      </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 rounded border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+        className="mt-1 border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-[#EB0A1E] focus:outline-none focus:ring-1 focus:ring-[#EB0A1E] dark:border-zinc-700 dark:bg-zinc-800"
       >
         {options.map((o) => (
           <option key={o.v} value={o.v}>

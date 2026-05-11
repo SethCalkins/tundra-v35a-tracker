@@ -19,13 +19,13 @@ export function FailureMileageChart({ data }: { data: Datum[] }) {
         <XAxis dataKey="bucket_label" stroke="#71717a" />
         <YAxis stroke="#71717a" allowDecimals={false} />
         <Tooltip
-          contentStyle={{ background: "#27272a", border: "none", borderRadius: 6, color: "#fafafa", fontSize: 12 }}
-          cursor={{ fill: "rgba(63, 63, 70, 0.1)" }}
+          contentStyle={{ background: "#1f1f1f", border: "none", borderRadius: 0, color: "#fafafa", fontSize: 12 }}
+          cursor={{ fill: "rgba(235, 10, 30, 0.08)" }}
         />
         <Legend />
-        <Bar dataKey="total_complaints" name="All complaints" fill="#a1a1aa" radius={[3, 3, 0, 0]} />
-        <Bar dataKey="engine_complaints" name="Engine component" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-        <Bar dataKey="stall_mentions" name='Mentions "stall"' fill="#dc2626" radius={[3, 3, 0, 0]} />
+        <Bar dataKey="total_complaints" name="All complaints" fill="#a1a1aa" />
+        <Bar dataKey="engine_complaints" name="Engine component" fill="#F08585" />
+        <Bar dataKey="stall_mentions" name='Mentions "stall"' fill="#EB0A1E" />
       </BarChart>
     </ResponsiveContainer>
   );

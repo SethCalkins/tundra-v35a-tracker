@@ -6,16 +6,18 @@ import {
   getOverviewCounts,
   getRecallBreakdown,
   getYearMileageBuckets,
+  getSeverityTotals,
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function Overview() {
-  const [counts, recallBreakdown, mileageByYear, complaintTotals] = await Promise.all([
+  const [counts, recallBreakdown, mileageByYear, complaintTotals, severity] = await Promise.all([
     getOverviewCounts(),
     getRecallBreakdown(),
     getYearMileageBuckets(),
     getComplaintTotals(),
+    getSeverityTotals(),
   ]);
 
   const polled24v381 = recallBreakdown.filter((r) => r.recall_id === "24V381");
@@ -27,198 +29,257 @@ export default async function Overview() {
   const pct = (n: number, d: number) =>
     d === 0 ? "—" : `${Math.round((n / d) * 100)}%`;
 
-  const cohort = mileageByYear.filter(
-    (b) => b.model_year >= 2022 && b.model_year <= 2024,
-  );
-  const cohortCount = cohort.reduce((s, b) => s + b.count, 0);
-
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       {/* Hero */}
-      <section className="mb-14">
-        <p className="text-xs font-medium uppercase tracking-wider text-amber-600 dark:text-amber-400">
-          Live data — refreshed nightly
+      <section className="mb-16">
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#EB0A1E]">
+          The data Toyota isn&apos;t showing you
         </p>
-        <h1 className="mt-3 max-w-3xl text-5xl font-semibold tracking-tight sm:text-6xl">
-          <span className="bg-gradient-to-r from-zinc-900 via-zinc-700 to-zinc-900 bg-clip-text text-transparent dark:from-zinc-50 dark:via-zinc-200 dark:to-zinc-50">
-            How are 3rd-gen Tundras
-          </span>{" "}
+        <h1 className="mt-4 max-w-4xl text-5xl font-bold tracking-tight sm:text-7xl">
+          <span className="italic">How reliable</span>
           <br className="hidden sm:block" />
-          <span className="bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent">
-            actually holding up?
-          </span>
+          <span> are 3rd-gen Tundras, </span>
+          <span className="italic text-[#EB0A1E]">really?</span>
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-          Independent tracker for the V35A engine recalls (
-          <span className="font-mono text-zinc-900 dark:text-zinc-200">24V381</span>{" "}
-          and{" "}
-          <span className="font-mono text-zinc-900 dark:text-zinc-200">25V767</span>
-          ). We scrape Carvana&apos;s 2022+ Tundra inventory, poll Toyota&apos;s
-          recall lookup, pull free Carfax previews, and ingest NHTSA owner-filed
-          complaints — then surface the patterns honestly.
+        <p className="mt-8 max-w-2xl text-lg leading-8 text-zinc-700 dark:text-zinc-300">
+          Independent reliability tracker for the Toyota Tundra V35A engine
+          recalls (
+          <span className="font-mono font-semibold">24V381</span> and{" "}
+          <span className="font-mono font-semibold">25V767</span>
+          ). NHTSA complaint data, Carvana inventory analysis, and Toyota recall
+          status — surfaced honestly, with no marketing department in the loop.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-10 flex flex-wrap gap-3">
           <Link
-            href="/failures"
-            className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            href="/lifespan"
+            className="inline-flex items-center gap-2 bg-[#EB0A1E] px-6 py-3 text-sm font-semibold uppercase tracking-wider text-white transition-colors hover:bg-[#c40818]"
           >
-            Engine recall status
+            See the failure data
             <span aria-hidden>→</span>
           </Link>
           <Link
-            href="/lifespan"
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            href="/failures"
+            className="inline-flex items-center gap-2 border-2 border-zinc-900 bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wider text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-100 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900"
           >
-            When do they fail?
+            Recall status
+          </Link>
+          <Link
+            href="/submit"
+            className="inline-flex items-center gap-2 border-2 border-[#EB0A1E] bg-white px-6 py-3 text-sm font-semibold uppercase tracking-wider text-[#EB0A1E] transition-colors hover:bg-[#EB0A1E] hover:text-white dark:bg-zinc-950"
+          >
+            Report your engine
+            <span aria-hidden>+</span>
           </Link>
         </div>
+        <p className="mt-4 max-w-xl text-xs leading-5 text-zinc-500">
+          Own a 3rd-gen Tundra? Add your VIN, mileage, and (if applicable) when your engine was
+          replaced. Owner reports are how we close the gap that Toyota and Carfax leave.
+        </p>
       </section>
 
-      {/* Public appeal */}
-      <section className="mb-14 overflow-hidden rounded-3xl border-2 border-amber-300 bg-gradient-to-br from-amber-50 via-orange-50 to-white p-8 shadow-sm sm:p-10 dark:border-amber-900/50 dark:from-amber-950/30 dark:via-orange-950/30 dark:to-zinc-900">
-        <div className="flex items-start gap-4">
-          <div className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-md sm:flex">
-            <svg viewBox="0 0 24 24" fill="none" className="h-7 w-7" aria-hidden>
-              <path
-                d="M12 9v4M12 17h.01M5.07 19h13.86c1.54 0 2.5-1.67 1.73-3L13.73 4a2 2 0 00-3.46 0L3.34 16c-.77 1.33.19 3 1.73 3z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-              An open ask of Toyota Motor North America
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              Extend the V35A engine warranty to 100,000 miles.
-            </h2>
-            <p className="mt-4 text-base leading-7 text-zinc-700 dark:text-zinc-300">
-              Toyota built its reputation on engines that last 200k+ miles. The
-              V35A in 3rd-gen Tundras isn&apos;t living up to that. The recall
-              data and owner complaints are clear — and the current{" "}
-              <span className="font-medium">5-year / 60,000-mile powertrain warranty</span>{" "}
-              isn&apos;t enough for owners caught in the gap.
-            </p>
-
-            <ul className="mt-5 space-y-2.5 text-sm text-zinc-700 dark:text-zinc-300">
-              <li className="flex gap-3">
-                <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
-                <span>
-                  Median V35A engine-failure mileage in NHTSA owner complaints is{" "}
-                  <span className="font-semibold tabular-nums">
-                    {complaintTotals.median_failure_mileage?.toLocaleString() ?? "~34,000"} miles
-                  </span>
-                  —some failures reported as early as a few thousand miles, and as
-                  late as{" "}
-                  <span className="font-semibold tabular-nums">
-                    {complaintTotals.latest_failure?.toLocaleString() ?? "89,000"} miles
-                  </span>
-                  .
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
-                <span>
-                  <span className="font-semibold tabular-nums">{complaintTotals.engine_with_mileage}</span>{" "}
-                  owner complaints in the 2022–2024 cohort cite engine-component
-                  problems with mileage data attached. Many more were filed
-                  without mileage. This is a self-selected sample of an unknown
-                  larger field.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
-                <span>
-                  Recall <span className="font-mono">25V767</span>&apos;s remedy
-                  isn&apos;t scheduled to be available until July or August 2026
-                  per Toyota&apos;s own §573 filing. Owners with affected VINs
-                  have been told their engines may fail and there is no fix yet.
-                </span>
-              </li>
-              <li className="flex gap-3">
-                <span aria-hidden className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
-                <span>
-                  Trucks at 65k–80k miles that were never in either recall&apos;s
-                  build window have <em>no</em> recourse if their V35A fails — the
-                  factory powertrain warranty has already expired and the recall
-                  doesn&apos;t cover them.
-                </span>
-              </li>
-            </ul>
-
-            <div className="mt-6 rounded-xl bg-white/70 p-5 ring-1 ring-amber-200/60 backdrop-blur dark:bg-zinc-950/40 dark:ring-amber-900/30">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                The ask: extend the V35A engine warranty to 10 years / 100,000
-                miles, retroactive to all 3rd-gen Tundra and Lexus LX/GX owners.
-              </p>
-              <p className="mt-2 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-                Toyota already extends warranties on hybrid components to 10/150k.
-                A V35A-specific extension to 100k would cost a fraction of the
-                replacements Toyota is already performing under recall, restore
-                trust with the owner base, and match what Toyota&apos;s own
-                reputation is built on. It would cover the right tail of the
-                failure distribution that the recalls don&apos;t reach.
-              </p>
-            </div>
-
-            <p className="mt-5 text-xs text-zinc-500">
-              This is an independent owner&apos;s appeal based on public NHTSA
-              data and Carvana inventory analysis. Not affiliated with Toyota,
-              Lexus, or Carvana. If you&apos;re a 3rd-gen Tundra owner and want
-              to add your voice, file a complaint with NHTSA at{" "}
-              <a
-                href="https://www.nhtsa.gov/report-a-safety-problem"
-                className="font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
-              >
-                nhtsa.gov/report-a-safety-problem
-              </a>
-              {" "}or contact Toyota directly at 1-800-331-4331.
-            </p>
-          </div>
+      {/* The numbers */}
+      <section className="mb-16">
+        <div className="mb-6 flex items-baseline justify-between border-b border-zinc-200 pb-3 dark:border-zinc-800">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            The numbers
+          </h2>
+          <span className="text-[11px] uppercase tracking-wider text-zinc-400">
+            refreshed nightly
+          </span>
         </div>
-      </section>
-
-      {/* Population KPIs */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Population
-        </h2>
         <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard label="Vehicles tracked" value={counts.vehicles} caption="all 2022+ Tundras seen on Carvana" />
           <StatCard
-            label="V35A 2022-2024"
+            label="Owner complaints"
+            value={complaintTotals.total}
+            caption="filed with NHTSA, MY 2022–2024"
+            emphasis="danger"
+          />
+          <StatCard
+            label="Median failure mileage"
+            value={complaintTotals.median_failure_mileage?.toLocaleString() ?? "—"}
+            caption="of engine-component complaints"
+            emphasis="danger"
+          />
+          <StatCard
+            label="Trucks towed"
+            value={severity.total_towed}
+            caption="catastrophic engine failures"
+          />
+          <StatCard
+            label="V35A recall cohort"
             value={counts.recall_eligible}
-            caption="recall-eligible cohort"
-            emphasis="warning"
-          />
-          <StatCard
-            label="i-FORCE MAX (hybrid)"
-            value={counts.v35a_hybrid}
-            caption={`${counts.v35a_nonhybrid.toLocaleString()} non-hybrid in cohort`}
-          />
-          <StatCard
-            label="Median mileage"
-            value={counts.median_mileage_3rdgen?.toLocaleString() ?? "—"}
-            caption="latest observation per VIN"
+            caption="Carvana 2022-2024 V35A inventory"
           />
         </dl>
       </section>
 
-      {/* Recall callouts */}
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Engine recall status
-        </h2>
+      {/* Public appeal */}
+      <section className="mb-16">
+        <div className="border-l-[6px] border-[#EB0A1E] bg-zinc-50 p-8 sm:p-10 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#EB0A1E]">
+            An open ask of Toyota Motor North America
+          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight italic sm:text-4xl">
+            Extend the V35A engine warranty to 100,000 miles
+            <span className="text-[#EB0A1E]">.</span>
+          </h2>
+          <p className="mt-2 text-lg font-semibold tracking-tight text-zinc-700 dark:text-zinc-300">
+            Both i-FORCE and i-FORCE MAX. Same engine, same defect, same risk.
+          </p>
+
+          <p className="mt-6 max-w-3xl text-base leading-7 text-zinc-700 dark:text-zinc-300">
+            Toyota built its reputation on engines that last 200k+ miles. The V35A
+            in 3rd-gen Tundras isn&apos;t living up to that. The recall data and
+            owner complaints are clear — and the current{" "}
+            <strong>5-year / 60,000-mile powertrain warranty</strong>{" "}isn&apos;t
+            enough for owners caught in the gap.
+          </p>
+
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                What the data shows
+              </h3>
+              <ul className="mt-3 space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    Median V35A failure mileage:{" "}
+                    <span className="font-bold tabular-nums">
+                      {complaintTotals.median_failure_mileage?.toLocaleString() ?? "~34,000"} miles
+                    </span>
+                    . Range from a few thousand miles to{" "}
+                    <span className="font-bold tabular-nums">
+                      {complaintTotals.latest_failure?.toLocaleString() ?? "89,000"} miles
+                    </span>
+                    .
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    <span className="font-bold tabular-nums">
+                      {severity.total_towed}
+                    </span>{" "}
+                    of these failures required the truck to be towed — catastrophic
+                    on-road events.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    Recall <span className="font-mono font-bold">25V767</span>&apos;s
+                    remedy isn&apos;t scheduled until ~Aug 2026 per Toyota&apos;s own
+                    §573 filing. Owners with affected VINs are told their engines
+                    may fail and there is no fix yet.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    Trucks at 65k–80k miles outside both recalls have <em>no</em>{" "}
+                    recourse if their V35A fails. Powertrain warranty has expired,
+                    recall doesn&apos;t cover them.
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                Why hybrids must be included
+              </h3>
+              <ul className="mt-3 space-y-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    The <strong>i-FORCE MAX uses the same V35A-FTS block</strong>{" "}as
+                    the non-hybrid i-FORCE. The defect is in the engine&apos;s main
+                    bearings — present regardless of powertrain.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    Recall <span className="font-mono font-bold">25V767</span>{" "}
+                    explicitly includes hybrid Tundras. Toyota has already
+                    acknowledged the engine risk applies equally.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    Toyota&apos;s 10-year / 150,000-mile hybrid warranty covers the
+                    1TM electric drive motor and battery — <strong>not</strong>{" "}the
+                    V35A engine block. Hybrid owners get the same 5/60 powertrain
+                    coverage as everyone else, while paying a premium for the
+                    hybrid system.
+                  </span>
+                </li>
+                <li className="flex gap-3">
+                  <span aria-hidden className="mt-2 h-1 w-3 shrink-0 bg-[#EB0A1E]" />
+                  <span>
+                    Excluding hybrids from any extension would leave i-FORCE MAX
+                    owners — who paid more for their truck — with weaker engine
+                    coverage than gas-only buyers. That cannot be the policy.
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-8 border-2 border-[#EB0A1E] bg-white p-6 dark:bg-zinc-950">
+            <p className="text-sm font-bold uppercase tracking-wider text-[#EB0A1E]">
+              The ask
+            </p>
+            <p className="mt-2 text-base font-semibold leading-7 text-zinc-900 dark:text-zinc-100">
+              Extend the V35A engine block warranty to 10 years / 100,000 miles for{" "}
+              <em>every 3rd-gen Tundra and Lexus LX/GX</em>{" "}— i-FORCE and i-FORCE
+              MAX, retroactive to all affected owners regardless of recall scope.
+            </p>
+            <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+              The cost of an extension is a fraction of the engine swaps Toyota is
+              already performing under recall. The reputational return — restoring
+              the &quot;Toyotas last forever&quot; promise that the brand was built
+              on — is enormous. The right tail of the failure curve runs past 60k
+              miles. Cover it.
+            </p>
+          </div>
+
+          <p className="mt-6 text-xs leading-5 text-zinc-500">
+            This is an independent owner&apos;s appeal based on public NHTSA data
+            and Carvana inventory analysis. Not affiliated with Toyota, Lexus, or
+            Carvana. If you&apos;re a 3rd-gen Tundra owner and want to add your
+            voice, file a complaint with NHTSA at{" "}
+            <a
+              href="https://www.nhtsa.gov/report-a-safety-problem"
+              className="font-medium text-[#EB0A1E] underline-offset-2 hover:underline"
+            >
+              nhtsa.gov/report-a-safety-problem
+            </a>{" "}
+            or call Toyota at <strong>1-800-331-4331</strong>.
+          </p>
+        </div>
+      </section>
+
+      {/* Recall status callouts */}
+      <section className="mb-16">
+        <div className="mb-6 flex items-baseline justify-between border-b border-zinc-200 pb-3 dark:border-zinc-800">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            Recall status
+          </h2>
+          <Link href="/failures" className="text-xs font-medium text-[#EB0A1E] hover:underline">
+            View detail →
+          </Link>
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <RecallCard
             id="24V381"
             campaign="Toyota 24TA07"
-            status="remedy ACTIVE"
-            statusTone="emerald"
-            description="2022–2023 Tundra. Dealers replace the engine assembly free of charge. Active since Dec 2024."
+            statusLabel="REMEDY ACTIVE"
+            statusTone="ok"
+            description="2022–2023 Tundra & LX600 with V35A. Dealers replace the engine assembly free of charge. Active since Dec 2024."
             open={open24}
             polled={totalPolled24}
             pct={pct(open24, totalPolled24)}
@@ -226,9 +287,9 @@ export default async function Overview() {
           <RecallCard
             id="25V767"
             campaign="Toyota 25TA14"
-            status="remedy UNDER DEV (~Aug 2026)"
-            statusTone="amber"
-            description="Expansion of 24V381 covering 2022–2024 Tundra + Lexus LX/GX. Most eligible VINs still appear open because Toyota's final remedy isn't available yet."
+            statusLabel="REMEDY UNDER DEV"
+            statusTone="warn"
+            description="Expansion: 2022–2024 Tundra (incl. hybrid) + Lexus LX & GX. Final remedy not available until ~Aug 2026."
             open={open25}
             polled={totalPolled25}
             pct={pct(open25, totalPolled25)}
@@ -238,16 +299,16 @@ export default async function Overview() {
 
       {/* Cohort table */}
       <section>
-        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-zinc-500">
+        <h2 className="mb-6 border-b border-zinc-200 pb-3 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:border-zinc-800">
           Cohort snapshot
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase tracking-wider text-zinc-500 dark:bg-zinc-800/40">
+            <thead className="bg-zinc-100 text-[11px] uppercase tracking-wider text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
               <tr>
                 <th className="px-5 py-3 text-left">Year</th>
                 <th className="px-5 py-3 text-left">Powertrain</th>
-                <th className="px-5 py-3 text-right">Count</th>
+                <th className="px-5 py-3 text-right">Trucks</th>
                 <th className="px-5 py-3 text-right">Median mileage</th>
                 <th className="px-5 py-3 text-right">P25 / P75</th>
                 <th className="px-5 py-3 text-right">Median price</th>
@@ -255,23 +316,18 @@ export default async function Overview() {
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {mileageByYear.map((b) => (
-                <tr
-                  key={`${b.model_year}-${b.is_hybrid}`}
-                  className="transition-colors hover:bg-zinc-50/80 dark:hover:bg-zinc-800/30"
-                >
-                  <td className="px-5 py-3 tabular-nums">{b.model_year}</td>
+                <tr key={`${b.model_year}-${b.is_hybrid}`} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                  <td className="px-5 py-3 font-medium tabular-nums">{b.model_year}</td>
                   <td className="px-5 py-3">
                     {b.is_hybrid === true ? (
-                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
-                        i-FORCE MAX
-                      </span>
+                      <span className="text-zinc-700 dark:text-zinc-300">i-FORCE MAX</span>
                     ) : b.is_hybrid === false ? (
                       <span className="text-zinc-600 dark:text-zinc-400">non-hybrid</span>
                     ) : (
                       <span className="text-zinc-400">?</span>
                     )}
                   </td>
-                  <td className="px-5 py-3 text-right tabular-nums font-medium">{b.count}</td>
+                  <td className="px-5 py-3 text-right tabular-nums font-semibold">{b.count}</td>
                   <td className="px-5 py-3 text-right tabular-nums">
                     {b.median_mileage?.toLocaleString() ?? "—"}
                   </td>
@@ -296,46 +352,44 @@ export default async function Overview() {
 interface RecallCardProps {
   id: string;
   campaign: string;
-  status: string;
-  statusTone: "emerald" | "amber";
+  statusLabel: string;
+  statusTone: "ok" | "warn";
   description: string;
   open: number;
   polled: number;
   pct: string;
 }
 
-function RecallCard({ id, campaign, status, statusTone, description, open, polled, pct }: RecallCardProps) {
-  const toneClass = statusTone === "emerald"
-    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-    : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+function RecallCard({ id, campaign, statusLabel, statusTone, description, open, polled, pct }: RecallCardProps) {
+  const toneClass = statusTone === "ok"
+    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300"
+    : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300";
   return (
-    <div className="group relative overflow-hidden rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm transition-shadow hover:shadow-lg dark:border-zinc-800/80 dark:bg-zinc-900">
+    <div className="border border-zinc-200 bg-white p-6 transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="font-mono text-base font-semibold tracking-tight">{id}</h3>
+          <h3 className="font-mono text-base font-bold tracking-tight">{id}</h3>
           <p className="mt-0.5 font-mono text-xs text-zinc-500">{campaign}</p>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${toneClass}`}>{status}</span>
+        <span className={`px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${toneClass}`}>
+          {statusLabel}
+        </span>
       </div>
-      <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
-      <div className="mt-5 flex items-end gap-6">
+      <p className="mt-3 text-sm leading-6 text-zinc-700 dark:text-zinc-300">{description}</p>
+      <div className="mt-5 grid grid-cols-3 gap-4 border-t border-zinc-200 pt-4 text-center dark:border-zinc-800">
         <div>
-          <p className="text-xs uppercase tracking-wider text-zinc-500">Open</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums text-amber-700 dark:text-amber-400">
-            {open}
-          </p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Open</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums text-[#EB0A1E]">{open}</p>
         </div>
-        <div className="text-zinc-300 dark:text-zinc-700">/</div>
         <div>
-          <p className="text-xs uppercase tracking-wider text-zinc-500">Polled</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{polled}</p>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">Polled</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{polled}</p>
         </div>
-        <div className="ml-auto text-right">
-          <p className="text-xs uppercase tracking-wider text-zinc-500">% open</p>
-          <p className="mt-1 text-3xl font-semibold tabular-nums">{pct}</p>
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">% open</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{pct}</p>
         </div>
       </div>
-      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-amber-200/40 to-transparent opacity-0 transition-opacity group-hover:opacity-100 dark:from-amber-500/10" />
     </div>
   );
 }

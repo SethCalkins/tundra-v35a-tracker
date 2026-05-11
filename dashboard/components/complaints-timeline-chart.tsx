@@ -14,13 +14,13 @@ export function ComplaintsTimelineChart({ data }: { data: ComplaintsByMonth[] })
         <XAxis dataKey="month" stroke="#71717a" fontSize={11} />
         <YAxis stroke="#71717a" allowDecimals={false} />
         <Tooltip
-          contentStyle={{ background: "#27272a", border: "none", borderRadius: 6, color: "#fafafa", fontSize: 12 }}
+          contentStyle={{ background: "#1f1f1f", border: "none", borderRadius: 0, color: "#fafafa", fontSize: 12 }}
           cursor={{ stroke: "#a1a1aa", strokeDasharray: "3 3" }}
         />
         <Legend wrapperStyle={{ paddingTop: 8 }} />
         <Area type="monotone" dataKey="total" name="All complaints" stroke="#71717a" fill="#71717a" fillOpacity={0.18} />
-        <Area type="monotone" dataKey="engine" name="Engine component" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.4} />
-        <Area type="monotone" dataKey="with_tow" name="Engine + towed" stroke="#dc2626" fill="#dc2626" fillOpacity={0.55} />
+        <Area type="monotone" dataKey="engine" name="Engine component" stroke="#F08585" fill="#F08585" fillOpacity={0.4} />
+        <Area type="monotone" dataKey="with_tow" name="Engine + towed" stroke="#EB0A1E" fill="#EB0A1E" fillOpacity={0.55} />
       </AreaChart>
     </ResponsiveContainer>
   );

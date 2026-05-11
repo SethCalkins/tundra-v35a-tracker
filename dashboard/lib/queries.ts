@@ -825,6 +825,379 @@ export async function getPriceMileagePoints(): Promise<PriceMileagePoint[]> {
   `);
 }
 
+export interface SeverityTotals {
+  engine_complaints: number;
+  total_towed: number;
+  total_crashed: number;
+  total_fires: number;
+  total_injured: number;
+  total_deaths: number;
+}
+
+export async function getSeverityTotals(): Promise<SeverityTotals> {
+  const row = await queryOne<{
+    engine_complaints: string; total_towed: string;
+    total_crashed: string; total_fires: string;
+    total_injured: string; total_deaths: string;
+  }>(`
+    SELECT
+      COUNT(*) FILTER (WHERE component ILIKE '%engine%')::text         AS engine_complaints,
+      COUNT(*) FILTER (WHERE component ILIKE '%engine%' AND vehicle_towed)::text  AS total_towed,
+      COUNT(*) FILTER (WHERE component ILIKE '%engine%' AND crash)::text          AS total_crashed,
+      COUNT(*) FILTER (WHERE component ILIKE '%engine%' AND fire)::text           AS total_fires,
+      SUM(num_injured) FILTER (WHERE component ILIKE '%engine%')::text             AS total_injured,
+      SUM(num_deaths)  FILTER (WHERE component ILIKE '%engine%')::text             AS total_deaths
+    FROM nhtsa_complaints
+    WHERE make='TOYOTA' AND model='TUNDRA' AND model_year BETWEEN 2022 AND 2024
+  `);
+  if (!row) return { engine_complaints: 0, total_towed: 0, total_crashed: 0, total_fires: 0, total_injured: 0, total_deaths: 0 };
+  return {
+    engine_complaints: Number(row.engine_complaints),
+    total_towed: Number(row.total_towed),
+    total_crashed: Number(row.total_crashed),
+    total_fires: Number(row.total_fires),
+    total_injured: Number(row.total_injured) || 0,
+    total_deaths: Number(row.total_deaths) || 0,
+  };
+}
+
+export interface TowRateBucket {
+  bucket_label: string;
+  total: number;
+  towed: number;
+  tow_rate: number;
+}
+
+export async function getTowRateByMileage(): Promise<TowRateBucket[]> {
+  const rows = await query<{
+    bucket_floor: string; bucket_label: string;
+    total: string; towed: string;
+  }>(`
+    SELECT
+      bucket_floor::text,
+      bucket_label,
+      COUNT(*)::text                                  AS total,
+      SUM(vehicle_towed::int)::text                   AS towed
+    FROM (
+      SELECT
+        vehicle_towed,
+        CASE
+          WHEN miles_at_failure < 5000 THEN 0
+          WHEN miles_at_failure < 10000 THEN 5000
+          WHEN miles_at_failure < 20000 THEN 10000
+          WHEN miles_at_failure < 30000 THEN 20000
+          WHEN miles_at_failure < 40000 THEN 30000
+          WHEN miles_at_failure < 50000 THEN 40000
+          WHEN miles_at_failure < 75000 THEN 50000
+          ELSE 75000
+        END                              AS bucket_floor,
+        CASE
+          WHEN miles_at_failure < 5000 THEN '0-5k'
+          WHEN miles_at_failure < 10000 THEN '5-10k'
+          WHEN miles_at_failure < 20000 THEN '10-20k'
+          WHEN miles_at_failure < 30000 THEN '20-30k'
+          WHEN miles_at_failure < 40000 THEN '30-40k'
+          WHEN miles_at_failure < 50000 THEN '40-50k'
+          WHEN miles_at_failure < 75000 THEN '50-75k'
+          ELSE '75k+'
+        END AS bucket_label
+      FROM nhtsa_complaints
+      WHERE make='TOYOTA' AND model='TUNDRA'
+        AND model_year BETWEEN 2022 AND 2024
+        AND component ILIKE '%engine%'
+        AND miles_at_failure IS NOT NULL
+    ) bucketed
+    GROUP BY bucket_floor, bucket_label
+    ORDER BY bucket_floor
+  `);
+  return rows.map((r) => {
+    const total = Number(r.total);
+    const towed = Number(r.towed) || 0;
+    return {
+      bucket_label: r.bucket_label,
+      total,
+      towed,
+      tow_rate: total > 0 ? Math.round((towed / total) * 100) : 0,
+    };
+  });
+}
+
+export interface CohortFailureRow {
+  year: number;
+  hybrid: boolean | null;
+  carvana_count: number;
+  complaint_count: number;
+  engine_complaint_count: number;
+  with_tow: number;
+}
+
+/**
+ * Per-cohort comparison: for each (year, powertrain) cell, how many
+ * trucks we observe on Carvana vs how many engine complaints exist.
+ * NHTSA complaints are aggregated to the cohort because the 11-char
+ * VIN prefix is enough to identify the cohort but not a specific truck.
+ */
+export async function getCohortFailures(): Promise<CohortFailureRow[]> {
+  return query<CohortFailureRow>(`
+    WITH our_cohort AS (
+      SELECT model_year, is_hybrid, COUNT(*) AS carvana_count
+        FROM vehicles
+       WHERE engine_code ILIKE '%V35A%' AND model_year BETWEEN 2022 AND 2024
+       GROUP BY model_year, is_hybrid
+    ),
+    nhtsa_cohort AS (
+      SELECT model_year,
+             COUNT(*)                                                          AS complaint_count,
+             COUNT(*) FILTER (WHERE component ILIKE '%engine%')                AS engine_complaint_count,
+             COUNT(*) FILTER (WHERE component ILIKE '%engine%' AND vehicle_towed) AS with_tow
+        FROM nhtsa_complaints
+       WHERE make='TOYOTA' AND model='TUNDRA' AND model_year BETWEEN 2022 AND 2024
+       GROUP BY model_year
+    )
+    SELECT
+      o.model_year                          AS year,
+      o.is_hybrid                           AS hybrid,
+      o.carvana_count                       AS carvana_count,
+      COALESCE(n.complaint_count, 0)        AS complaint_count,
+      COALESCE(n.engine_complaint_count, 0) AS engine_complaint_count,
+      COALESCE(n.with_tow, 0)               AS with_tow
+    FROM our_cohort o
+    LEFT JOIN nhtsa_cohort n ON n.model_year = o.model_year
+    ORDER BY o.model_year, o.is_hybrid NULLS LAST
+  `);
+}
+
+export interface FailureCurvePoint {
+  bucket_floor: number;
+  bucket_label: string;
+  cumulative_failures: number;
+  per_bucket: number;
+}
+
+// ── User submissions (community-reported engine replacements) ────────────
+
+export interface UserSubmissionTotals {
+  total: number;
+  total_verified: number;
+  replacements: number;
+  replacements_verified: number;
+  median_replacement_mileage: number | null;
+  earliest_replacement_mileage: number | null;
+  latest_replacement_mileage: number | null;
+  hybrid_replacements: number;
+  nonhybrid_replacements: number;
+  recall_replacements: number;
+  non_recall_replacements: number;
+  reports_with_tow: number;
+}
+
+export async function getUserSubmissionTotals(): Promise<UserSubmissionTotals> {
+  const row = await queryOne<{
+    total: string; total_verified: string;
+    replacements: string; replacements_verified: string;
+    median_replacement_mileage: string | null;
+    earliest_replacement_mileage: string | null;
+    latest_replacement_mileage: string | null;
+    hybrid_replacements: string;
+    nonhybrid_replacements: string;
+    recall_replacements: string;
+    non_recall_replacements: string;
+    reports_with_tow: string;
+  }>(`
+    SELECT
+      COUNT(*)::text                                                                     AS total,
+      COUNT(*) FILTER (WHERE verified)::text                                             AS total_verified,
+      COUNT(*) FILTER (WHERE engine_replaced)::text                                      AS replacements,
+      COUNT(*) FILTER (WHERE engine_replaced AND verified)::text                         AS replacements_verified,
+      percentile_cont(0.5) WITHIN GROUP (ORDER BY replacement_mileage)
+        FILTER (WHERE engine_replaced AND replacement_mileage IS NOT NULL)               AS median_replacement_mileage,
+      MIN(replacement_mileage) FILTER (WHERE engine_replaced AND replacement_mileage > 0)::text AS earliest_replacement_mileage,
+      MAX(replacement_mileage) FILTER (WHERE engine_replaced AND replacement_mileage > 0)::text AS latest_replacement_mileage,
+      COUNT(*) FILTER (WHERE engine_replaced AND is_hybrid)::text                        AS hybrid_replacements,
+      COUNT(*) FILTER (WHERE engine_replaced AND is_hybrid IS FALSE)::text               AS nonhybrid_replacements,
+      COUNT(*) FILTER (WHERE engine_replaced AND under_recall)::text                     AS recall_replacements,
+      COUNT(*) FILTER (WHERE engine_replaced AND under_recall IS FALSE)::text            AS non_recall_replacements,
+      COUNT(*) FILTER (WHERE engine_replaced AND was_towed)::text                        AS reports_with_tow
+    FROM user_submissions
+    WHERE NOT honeypot_failed
+  `);
+  if (!row) {
+    return {
+      total: 0, total_verified: 0,
+      replacements: 0, replacements_verified: 0,
+      median_replacement_mileage: null,
+      earliest_replacement_mileage: null,
+      latest_replacement_mileage: null,
+      hybrid_replacements: 0, nonhybrid_replacements: 0,
+      recall_replacements: 0, non_recall_replacements: 0,
+      reports_with_tow: 0,
+    };
+  }
+  return {
+    total: Number(row.total),
+    total_verified: Number(row.total_verified),
+    replacements: Number(row.replacements),
+    replacements_verified: Number(row.replacements_verified),
+    median_replacement_mileage: row.median_replacement_mileage
+      ? Math.round(Number(row.median_replacement_mileage))
+      : null,
+    earliest_replacement_mileage: row.earliest_replacement_mileage
+      ? Number(row.earliest_replacement_mileage)
+      : null,
+    latest_replacement_mileage: row.latest_replacement_mileage
+      ? Number(row.latest_replacement_mileage)
+      : null,
+    hybrid_replacements: Number(row.hybrid_replacements),
+    nonhybrid_replacements: Number(row.nonhybrid_replacements),
+    recall_replacements: Number(row.recall_replacements),
+    non_recall_replacements: Number(row.non_recall_replacements),
+    reports_with_tow: Number(row.reports_with_tow),
+  };
+}
+
+export interface UserReplacementRow {
+  id: number;
+  submitted_at: string;
+  vin_prefix: string;       // first 11 chars; full VIN never sent to client
+  model_year: number | null;
+  trim: string | null;
+  is_hybrid: boolean | null;
+  replacement_date: string | null;
+  replacement_mileage: number | null;
+  failure_mode: string | null;
+  was_towed: boolean | null;
+  under_recall: boolean | null;
+  recall_campaign: string | null;
+  dealer_state: string | null;
+  notes: string | null;
+  verified: boolean;
+}
+
+/**
+ * Recent community-reported engine replacements. Returns 11-char VIN
+ * prefix only — the full VIN stays on the server.
+ */
+export async function getRecentUserReplacements(limit = 25): Promise<UserReplacementRow[]> {
+  return query<UserReplacementRow>(
+    `SELECT
+        id,
+        submitted_at,
+        LEFT(vin, 11)                              AS vin_prefix,
+        model_year, trim, is_hybrid,
+        replacement_date::text                     AS replacement_date,
+        replacement_mileage, failure_mode, was_towed,
+        under_recall, recall_campaign,
+        dealer_state, notes,
+        verified
+      FROM user_submissions
+      WHERE NOT honeypot_failed
+        AND engine_replaced
+      ORDER BY submitted_at DESC
+      LIMIT $1`,
+    [limit],
+  );
+}
+
+export interface UserMileageBucket {
+  bucket_floor: number;
+  bucket_label: string;
+  reports: number;
+}
+
+export async function getUserReplacementMileageHistogram(): Promise<UserMileageBucket[]> {
+  const rows = await query<{
+    bucket_floor: string; bucket_label: string; reports: string;
+  }>(`
+    SELECT bucket_floor::text, bucket_label, COUNT(*)::text AS reports
+    FROM (
+      SELECT
+        CASE
+          WHEN replacement_mileage < 5000 THEN 0
+          WHEN replacement_mileage < 10000 THEN 5000
+          WHEN replacement_mileage < 20000 THEN 10000
+          WHEN replacement_mileage < 30000 THEN 20000
+          WHEN replacement_mileage < 40000 THEN 30000
+          WHEN replacement_mileage < 50000 THEN 40000
+          WHEN replacement_mileage < 75000 THEN 50000
+          WHEN replacement_mileage < 100000 THEN 75000
+          ELSE 100000
+        END AS bucket_floor,
+        CASE
+          WHEN replacement_mileage < 5000 THEN '0-5k'
+          WHEN replacement_mileage < 10000 THEN '5-10k'
+          WHEN replacement_mileage < 20000 THEN '10-20k'
+          WHEN replacement_mileage < 30000 THEN '20-30k'
+          WHEN replacement_mileage < 40000 THEN '30-40k'
+          WHEN replacement_mileage < 50000 THEN '40-50k'
+          WHEN replacement_mileage < 75000 THEN '50-75k'
+          WHEN replacement_mileage < 100000 THEN '75-100k'
+          ELSE '100k+'
+        END AS bucket_label
+      FROM user_submissions
+      WHERE NOT honeypot_failed
+        AND engine_replaced
+        AND replacement_mileage IS NOT NULL
+        AND replacement_mileage > 0
+    ) bucketed
+    GROUP BY bucket_floor, bucket_label
+    ORDER BY bucket_floor
+  `);
+  return rows.map((r) => ({
+    bucket_floor: Number(r.bucket_floor),
+    bucket_label: r.bucket_label,
+    reports: Number(r.reports),
+  }));
+}
+
+export async function getCumulativeFailureCurve(): Promise<FailureCurvePoint[]> {
+  // Per-bucket counts of engine complaints with mileage data
+  const rows = await query<{ bucket_floor: string; bucket_label: string; per_bucket: string }>(`
+    SELECT
+      bucket_floor::text, bucket_label,
+      COUNT(*)::text AS per_bucket
+    FROM (
+      SELECT
+        CASE
+          WHEN miles_at_failure < 5000 THEN 0
+          WHEN miles_at_failure < 10000 THEN 5000
+          WHEN miles_at_failure < 20000 THEN 10000
+          WHEN miles_at_failure < 30000 THEN 20000
+          WHEN miles_at_failure < 40000 THEN 30000
+          WHEN miles_at_failure < 50000 THEN 40000
+          WHEN miles_at_failure < 75000 THEN 50000
+          ELSE 75000
+        END AS bucket_floor,
+        CASE
+          WHEN miles_at_failure < 5000 THEN '0-5k'
+          WHEN miles_at_failure < 10000 THEN '5-10k'
+          WHEN miles_at_failure < 20000 THEN '10-20k'
+          WHEN miles_at_failure < 30000 THEN '20-30k'
+          WHEN miles_at_failure < 40000 THEN '30-40k'
+          WHEN miles_at_failure < 50000 THEN '40-50k'
+          WHEN miles_at_failure < 75000 THEN '50-75k'
+          ELSE '75k+'
+        END AS bucket_label
+      FROM nhtsa_complaints
+      WHERE make='TOYOTA' AND model='TUNDRA'
+        AND model_year BETWEEN 2022 AND 2024
+        AND component ILIKE '%engine%'
+        AND miles_at_failure IS NOT NULL
+    ) b
+    GROUP BY bucket_floor, bucket_label
+    ORDER BY bucket_floor
+  `);
+  let running = 0;
+  return rows.map((r) => {
+    running += Number(r.per_bucket);
+    return {
+      bucket_floor: Number(r.bucket_floor),
+      bucket_label: r.bucket_label,
+      cumulative_failures: running,
+      per_bucket: Number(r.per_bucket),
+    };
+  });
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const rows = await query<{ day: string; recall_id: string; new_status: string; count: string }>(
     `SELECT date_trunc('day', observed_at)::date::text AS day,

@@ -20,12 +20,12 @@ export function RecallStatesChart({ data }: { data: RecallStateByCohort[] }) {
         <XAxis dataKey="label" stroke="#71717a" angle={-15} textAnchor="end" height={60} fontSize={11} />
         <YAxis stroke="#71717a" allowDecimals={false} />
         <Tooltip
-          contentStyle={{ background: "#27272a", border: "none", borderRadius: 6, color: "#fafafa", fontSize: 12 }}
-          cursor={{ fill: "rgba(63, 63, 70, 0.1)" }}
+          contentStyle={{ background: "#1f1f1f", border: "none", borderRadius: 0, color: "#fafafa", fontSize: 12 }}
+          cursor={{ fill: "rgba(235, 10, 30, 0.08)" }}
         />
         <Legend wrapperStyle={{ paddingTop: 10 }} />
-        <Bar dataKey="open" name="Engine recall OPEN" stackId="s" fill="#f59e0b" />
-        <Bar dataKey="pending" name="Pending remedy" stackId="s" fill="#fb923c" />
+        <Bar dataKey="open" name="Engine recall OPEN" stackId="s" fill="#EB0A1E" />
+        <Bar dataKey="pending" name="Pending remedy" stackId="s" fill="#F08585" />
         <Bar dataKey="unknown" name="Unknown / out of scope" stackId="s" fill="#a1a1aa" />
       </BarChart>
     </ResponsiveContainer>

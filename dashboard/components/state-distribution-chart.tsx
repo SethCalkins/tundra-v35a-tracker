@@ -14,12 +14,12 @@ export function StateDistributionChart({ data }: { data: ComplaintsByState[] }) 
         <XAxis dataKey="state" stroke="#71717a" />
         <YAxis stroke="#71717a" allowDecimals={false} />
         <Tooltip
-          contentStyle={{ background: "#27272a", border: "none", borderRadius: 6, color: "#fafafa", fontSize: 12 }}
-          cursor={{ fill: "rgba(63, 63, 70, 0.1)" }}
+          contentStyle={{ background: "#1f1f1f", border: "none", borderRadius: 0, color: "#fafafa", fontSize: 12 }}
+          cursor={{ fill: "rgba(235, 10, 30, 0.08)" }}
         />
         <Legend wrapperStyle={{ paddingTop: 8 }} />
         <Bar dataKey="total" name="All Tundra complaints" fill="#a1a1aa" />
-        <Bar dataKey="engine" name="Engine-component" fill="#f59e0b" />
+        <Bar dataKey="engine" name="Engine-component" fill="#EB0A1E" />
       </BarChart>
     </ResponsiveContainer>
   );
