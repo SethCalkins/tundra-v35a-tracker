@@ -119,32 +119,31 @@ export default async function Lifespan() {
         description="Owner-filed complaints from NHTSA's public database. Each row is a real owner reporting a real problem with a 2022-2024 V35A Toyota Tundra. Complaints capture mileage at the time of failure, the affected component, and a free-text description. NHTSA publishes 11-character VIN prefixes (per DPPA), enough to bucket by year/plant/engine but not identify a specific truck."
       />
 
-      {/* ── Engine replacement inference (Carfax + §573 scope) ────── */}
+      {/* ── 24V381 recall status across our tracked inventory ──────── */}
       {replacementInference.in_scope_22_23 > 0 && (
         <section className="mb-12 border-l-4 border-[#EB0A1E] bg-zinc-50 p-6 sm:p-8 dark:bg-zinc-900/40">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
             What about the trucks we&apos;re tracking?
           </p>
           <h2 className="mt-2 text-xl font-bold tracking-tight italic sm:text-2xl">
-            How many of our 2022-2023 V35A inventory have likely had their engine replaced?
+            Where do our 2022-2023 V35A trucks stand on recall 24V381?
           </h2>
 
           <dl className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard
               label="2022-2023 V35A tracked"
               value={replacementInference.in_scope_22_23}
-              caption="all in scope for 24V381"
+              caption="all eligible for 24V381"
             />
             <StatCard
-              label="Likely replaced"
+              label="Recall closed"
               value={replacementInference.likely_replaced_22_23}
-              caption={`${replacementInference.pct_likely_replaced_22_23}% of those with Carfax data`}
-              emphasis="danger"
+              caption="inspected and/or replaced"
             />
             <StatCard
               label="Still open"
               value={replacementInference.still_open_22_23}
-              caption="Carfax shows recall open"
+              caption="awaiting service"
               emphasis="danger"
             />
             <StatCard
@@ -155,19 +154,27 @@ export default async function Lifespan() {
           </dl>
 
           <p className="mt-6 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
-            Toyota strips completed-recall data from Carfax — but we can deduce
-            replacement: every 2022-2023 V35A Tundra is in scope for recall
-            <span className="font-mono"> 24V381</span>{" "}
-            per Toyota&rsquo;s own §573 filing. If Carfax no longer shows the
-            engine recall on a truck that we know was in scope, the only
-            explanation is the recall was completed — the engine was swapped.
-            <br />
-            <br />
-            <em>Caveat:</em> this is a strong inference, not a direct
-            confirmation. Owner submissions with documentation are the only
-            way to confirm a specific VIN.{" "}
+            Toyota strips completed-recall data from Carfax — once a VIN&rsquo;s
+            recall is closed, it disappears from the public feed entirely.
+            That means we can tell which trucks still have the recall open vs.
+            which have been through the dealer, but not what the dealer
+            actually did.
+          </p>
+          <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+            <strong>Important:</strong> &ldquo;Recall closed&rdquo; is{" "}
+            <em>not</em> the same as &ldquo;engine replaced.&rdquo; Per Toyota&rsquo;s
+            own §573 filing, the recall covers ~102k vehicles but the{" "}
+            <span className="font-bold">estimated percentage with defect is just 1%</span>.
+            The remedy procedure is inspect-first: dealers check for
+            machining debris and only swap the engine if it&rsquo;s found.
+            Most closed recalls were inspections that cleared the truck,
+            not engine swaps.
+          </p>
+          <p className="mt-4 max-w-3xl text-sm leading-6 text-zinc-700 dark:text-zinc-300">
+            The only way to confirm a specific VIN&rsquo;s engine was actually
+            replaced is an owner with documentation.{" "}
             <Link href="/submit" className="font-semibold text-[#EB0A1E] hover:underline">
-              Add your truck →
+              Add yours →
             </Link>
           </p>
         </section>
