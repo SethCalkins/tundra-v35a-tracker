@@ -30,6 +30,17 @@ function HybridBadge({ value }: { value: boolean | null }) {
   return <span className="whitespace-nowrap text-xs text-zinc-500">i-FORCE</span>;
 }
 
+function OutOfScopeBadge() {
+  return (
+    <span
+      className="whitespace-nowrap border border-dashed border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-400 dark:border-zinc-700"
+      title="Recall doesn't cover this model year"
+    >
+      n/a
+    </span>
+  );
+}
+
 function StatusBadge({ value }: { value: string | null }) {
   if (value === null) return <span className="text-zinc-400">—</span>;
   if (value === "open") {
@@ -141,11 +152,15 @@ const columns: ColumnDef<VehicleWithListing>[] = [
     id: "recall_24v381",
     header: () => <span className="text-center font-mono text-xs">24V381</span>,
     accessorKey: "recall_24v381",
-    cell: ({ getValue }) => (
-      <div className="text-center">
-        <StatusBadge value={getValue() as string | null} />
-      </div>
-    ),
+    cell: ({ row, getValue }) => {
+      const status = getValue() as string | null;
+      const year = row.original.model_year;
+      // 24V381 covers MY 2022-2023 only. Older or newer = recall doesn't apply.
+      if (status === null && year !== null && (year < 2022 || year > 2023)) {
+        return <div className="text-center"><OutOfScopeBadge /></div>;
+      }
+      return <div className="text-center"><StatusBadge value={status} /></div>;
+    },
     filterFn: (row, _id, value: string) => {
       if (!value || value === "all") return true;
       if (value === "not_polled") return row.original.recall_24v381 === null;
@@ -156,11 +171,15 @@ const columns: ColumnDef<VehicleWithListing>[] = [
     id: "recall_25v767",
     header: () => <span className="text-center font-mono text-xs">25V767</span>,
     accessorKey: "recall_25v767",
-    cell: ({ getValue }) => (
-      <div className="text-center">
-        <StatusBadge value={getValue() as string | null} />
-      </div>
-    ),
+    cell: ({ row, getValue }) => {
+      const status = getValue() as string | null;
+      const year = row.original.model_year;
+      // 25V767 covers MY 2022-2024. Outside that window = out of scope.
+      if (status === null && year !== null && (year < 2022 || year > 2024)) {
+        return <div className="text-center"><OutOfScopeBadge /></div>;
+      }
+      return <div className="text-center"><StatusBadge value={status} /></div>;
+    },
     filterFn: (row, _id, value: string) => {
       if (!value || value === "all") return true;
       if (value === "not_polled") return row.original.recall_25v767 === null;
