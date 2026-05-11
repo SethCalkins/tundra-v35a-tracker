@@ -66,7 +66,12 @@ export function SubmissionRow({ row }: { row: AdminSubmission }) {
         )}
         {replaced && (
           <span className="bg-[#EB0A1E] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
-            REPLACED
+            ENGINE REPLACED
+          </span>
+        )}
+        {!replaced && !isHoneypot && (
+          <span className="border border-green-600 bg-green-50 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700 dark:bg-green-950/40">
+            ENGINE OK · NOT REPLACED
           </span>
         )}
         {verified && (
@@ -95,7 +100,22 @@ export function SubmissionRow({ row }: { row: AdminSubmission }) {
         )}
         <Item label="Email" value={row.submitter_email ?? undefined} />
         <Item label="IP" value={row.ip_address ?? undefined} mono />
+        {verified && (
+          <>
+            <Item label="Verified via" value={row.verification_method ?? undefined} />
+            <Item
+              label="Verified at"
+              value={row.verified_at ? new Date(row.verified_at).toLocaleString() : undefined}
+            />
+          </>
+        )}
       </dl>
+
+      {row.user_agent && (
+        <p className="mt-2 break-all font-mono text-[10px] text-zinc-400" title="Submitter user-agent">
+          UA: {row.user_agent}
+        </p>
+      )}
 
       {row.notes && (
         <p className="mt-3 whitespace-pre-wrap border-l-2 border-zinc-300 bg-zinc-50 p-3 text-xs italic text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
