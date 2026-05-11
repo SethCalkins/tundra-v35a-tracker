@@ -1227,6 +1227,80 @@ export async function getRecallRemediation(): Promise<RecallRemediationRow[]> {
   });
 }
 
+// ── Recall PDFs (Toyota's §573 filings, parsed to text) ─────────────────
+
+export interface RecallDocumentRow {
+  id: number;
+  recall_id: string;
+  doc_type: string;
+  filename: string;
+  title: string | null;
+  submission_date: string | null;
+  source_url: string | null;
+  page_count: number | null;
+  excerpt: string;
+}
+
+/** Smart excerpt: prefer a defect/consequence/chronology paragraph. */
+function pickExcerpt(body: string | null): string {
+  if (!body) return "";
+  const cleaned = body.replace(/\s+/g, " ").trim();
+  if (!cleaned) return "";
+
+  // Try to grab the sentence around the strongest keyword.
+  const keywords = [
+    "machining debris",
+    "main bearing",
+    "engine assembly",
+    "knock",
+    "stall",
+    "defect",
+    "consequence",
+    "remedy",
+  ];
+  for (const kw of keywords) {
+    const idx = cleaned.toLowerCase().indexOf(kw);
+    if (idx > -1) {
+      const start = Math.max(0, idx - 60);
+      const end = Math.min(cleaned.length, idx + 320);
+      const slice = cleaned.slice(start, end);
+      return (start > 0 ? "… " : "") + slice + (end < cleaned.length ? " …" : "");
+    }
+  }
+  return cleaned.slice(0, 380) + (cleaned.length > 380 ? " …" : "");
+}
+
+export async function getRecallDocuments(): Promise<RecallDocumentRow[]> {
+  const rows = await query<{
+    id: number;
+    recall_id: string;
+    doc_type: string;
+    filename: string;
+    title: string | null;
+    submission_date: string | null;
+    source_url: string | null;
+    page_count: number | null;
+    body: string | null;
+  }>(`
+    SELECT id, recall_id, doc_type, filename, title, submission_date,
+           source_url, page_count, body
+      FROM recall_documents
+     WHERE page_count > 0
+     ORDER BY recall_id, submission_date IS NULL, submission_date DESC
+  `);
+  return rows.map((r) => ({
+    id: r.id,
+    recall_id: r.recall_id,
+    doc_type: r.doc_type,
+    filename: r.filename,
+    title: r.title,
+    submission_date: r.submission_date,
+    source_url: r.source_url,
+    page_count: r.page_count,
+    excerpt: pickExcerpt(r.body),
+  }));
+}
+
 export async function getRecallTimeline(days = 60): Promise<RecallTimeline[]> {
   const cutoff = new Date(Date.now() - days * 86400 * 1000).toISOString();
   return query<RecallTimeline>(

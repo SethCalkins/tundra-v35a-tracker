@@ -27,6 +27,7 @@ BATCH_OVERRIDES = {
     "observations": 50,            # raw_payload JSON blobs are large
     "carfax_observations": 50,
     "nhtsa_complaints": 50,
+    "recall_documents": 3,         # PDF bodies can be 60KB+
 }
 
 # Map of D1 ingest-payload key → (SQL table, columns to send).
@@ -64,6 +65,10 @@ SOURCES: dict[str, tuple[str, list[str]]] = {
         "report_no", "quarter",
         "involved", "total_remedied", "total_unreachable", "total_removed",
         "submission_date", "ingested_at",
+    ]),
+    "recall_documents": ("recall_documents", [
+        "recall_id", "doc_type", "filename", "title", "submission_date",
+        "source_url", "page_count", "body", "ingested_at",
     ]),
 }
 

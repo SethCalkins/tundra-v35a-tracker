@@ -18,6 +18,7 @@ import {
   getEngineComplaintSamples,
   getFailureMileageHistogram,
   getInventoryWithComplaints,
+  getRecallDocuments,
   getRecallRemediation,
   getRecentUserReplacements,
   getSeverityTotals,
@@ -61,6 +62,7 @@ export default async function Lifespan() {
     cohortFailures,
     failureCurve,
     remediation,
+    recallDocs,
   ] = await Promise.all([
     getFailureMileageHistogram(),
     getComplaintTotals(),
@@ -77,6 +79,7 @@ export default async function Lifespan() {
     getCohortFailures(),
     getCumulativeFailureCurve(),
     getRecallRemediation(),
+    getRecallDocuments(),
   ]);
 
   // 24V381 latest snapshot (newest quarter)
@@ -609,6 +612,61 @@ export default async function Lifespan() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {/* ── Toyota's filings, in their own words ─────────────────── */}
+      {recallDocs.length > 0 && (
+        <section className="mb-12 overflow-hidden border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+          <header className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
+              Toyota&rsquo;s filings, in their own words
+            </p>
+            <h2 className="mt-2 text-xl font-bold tracking-tight italic">
+              What Toyota told NHTSA.
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+              Every public §573 document Toyota filed for these recalls.
+              Each card shows the most defect-relevant passage extracted
+              from the PDF; click through to read the original filing.
+            </p>
+          </header>
+          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            {recallDocs.map((d) => (
+              <li key={d.id} className="px-6 py-5">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-mono text-xs font-bold tracking-tight text-[#EB0A1E]">
+                    {d.recall_id}
+                  </span>
+                  <span className="text-sm font-semibold">{d.title}</span>
+                  <span className="border border-zinc-300 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
+                    {d.doc_type.replace(/_/g, " ")}
+                  </span>
+                  {d.submission_date && (
+                    <span className="text-xs text-zinc-500">
+                      filed {d.submission_date.slice(0, 10)}
+                    </span>
+                  )}
+                  {d.page_count && (
+                    <span className="text-xs text-zinc-500">{d.page_count} pp</span>
+                  )}
+                </div>
+                <p className="mt-3 border-l-2 border-zinc-300 bg-zinc-50 p-3 text-xs italic leading-6 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">
+                  {d.excerpt || "No defect-related text extracted."}
+                </p>
+                {d.source_url && (
+                  <a
+                    href={d.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 inline-block text-xs font-semibold text-[#EB0A1E] hover:underline"
+                  >
+                    Read the full filing on nhtsa.gov →
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

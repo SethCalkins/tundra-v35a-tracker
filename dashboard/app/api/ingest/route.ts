@@ -34,6 +34,7 @@ interface IngestPayload {
   carfax_observations?: Json[];
   nhtsa_complaints?: Json[];
   recall_quarterly_reports?: Json[];
+  recall_documents?: Json[];
 }
 
 function toIntBool(v: unknown): number | null {
@@ -92,6 +93,7 @@ export async function POST(req: Request) {
     carfax_observations: 0,
     nhtsa_complaints: 0,
     recall_quarterly_reports: 0,
+    recall_documents: 0,
   };
 
   try {
@@ -314,6 +316,38 @@ export async function POST(req: Request) {
       );
       await db.batch(stmts);
       counts.recall_quarterly_reports = stmts.length;
+    }
+
+    // ─ recall_documents ─────────────────────────────────────────
+    if (payload.recall_documents?.length) {
+      const stmts = payload.recall_documents.map((d) =>
+        db
+          .prepare(
+            `INSERT INTO recall_documents
+              (recall_id, doc_type, filename, title, submission_date,
+               source_url, page_count, body, ingested_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(filename) DO UPDATE SET
+               body            = excluded.body,
+               page_count      = excluded.page_count,
+               submission_date = excluded.submission_date,
+               source_url      = COALESCE(recall_documents.source_url, excluded.source_url),
+               ingested_at     = excluded.ingested_at`,
+          )
+          .bind(
+            pick(d, "recall_id"),
+            pick(d, "doc_type"),
+            pick(d, "filename"),
+            pick(d, "title"),
+            pick(d, "submission_date"),
+            pick(d, "source_url"),
+            pick(d, "page_count"),
+            pick(d, "body"),
+            pick(d, "ingested_at"),
+          ),
+      );
+      await db.batch(stmts);
+      counts.recall_documents = stmts.length;
     }
   } catch (e) {
     console.error("ingest error", e);

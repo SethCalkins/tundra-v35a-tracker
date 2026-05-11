@@ -206,6 +206,25 @@ CREATE INDEX IF NOT EXISTS ix_recall_qtrly_recall_quarter
   ON recall_quarterly_reports (recall_id, quarter);
 
 -- ─────────────────────────────────────────────────────────────
+-- recall_documents — Toyota's filed §573 PDFs (text-extracted).
+-- One row per NHTSA filing; body = full PDF text.
+-- ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS recall_documents (
+  id               INTEGER PRIMARY KEY AUTOINCREMENT,
+  recall_id        TEXT NOT NULL,
+  doc_type         TEXT NOT NULL,
+  filename         TEXT NOT NULL UNIQUE,
+  title            TEXT,
+  submission_date  TEXT,
+  source_url       TEXT,
+  page_count       INTEGER,
+  body             TEXT,
+  ingested_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_recall_docs_recall_date
+  ON recall_documents (recall_id, submission_date);
+
+-- ─────────────────────────────────────────────────────────────
 -- seed recalls (24V381 + 25V767 with build windows from 573 reports)
 -- ─────────────────────────────────────────────────────────────
 INSERT OR REPLACE INTO recalls

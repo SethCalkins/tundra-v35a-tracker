@@ -317,6 +317,18 @@ def ingest_recall_quarterly(
     )
 
 
+@app.command(name="ingest-recall-docs")
+def ingest_recall_docs() -> None:
+    """Parse + ingest the NHTSA §573 PDFs Toyota filed for our recalls."""
+    from tundra.nhtsa.recall_documents import ingest
+
+    console.rule("[bold]ingest recall documents[/bold]")
+    stats = ingest()
+    console.print(
+        f"  seen={stats['seen']}  ingested={stats['ingested']}  skipped={stats['skipped']}",
+    )
+
+
 @app.command(name="sync-cloud")
 def sync_cloud(
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Count rows without POSTing.")] = False,
