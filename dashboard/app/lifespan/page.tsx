@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CommunityReportsSection } from "@/components/community-reports-section";
 import { ComplaintsTimelineChart } from "@/components/complaints-timeline-chart";
 import { CumulativeFailureChart } from "@/components/cumulative-failure-chart";
 import { FailureMileageChart } from "@/components/failure-mileage-chart";
@@ -792,6 +793,9 @@ export default async function Lifespan() {
           </ul>
         </section>
       )}
+
+      {/* ── Community owner reports (anonymized) ──────────────────── */}
+      <CommunityReportsSection />
 
       <section className="border-l-4 border-zinc-300 bg-zinc-50 p-6 text-sm leading-6 text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#EB0A1E]">
